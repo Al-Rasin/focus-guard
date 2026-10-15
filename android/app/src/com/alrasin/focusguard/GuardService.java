@@ -55,6 +55,7 @@ public class GuardService extends AccessibilityService {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Limits limits;
     private Keywords keywords;
+    private SessionTimer timer;
     private long lastPauseAt, lastKickAt, lastScan;
     private boolean scanQueued, escaping;
     private final Runnable rescan = this::queueScan;
@@ -64,6 +65,7 @@ public class GuardService extends AccessibilityService {
         instance = this;
         limits = new Limits(this);
         keywords = new Keywords(this);
+        timer = new SessionTimer(this, handler, limits);
         NotificationManager nm = getSystemService(NotificationManager.class);
         nm.createNotificationChannel(new NotificationChannel(
                 "status", "Opens left", NotificationManager.IMPORTANCE_LOW));
@@ -74,6 +76,7 @@ public class GuardService extends AccessibilityService {
     @Override
     public boolean onUnbind(Intent intent) {
         instance = null;
+        if (timer != null) timer.hide();
         return super.onUnbind(intent);
     }
 
@@ -105,20 +108,26 @@ public class GuardService extends AccessibilityService {
         }, wait);
     }
 
+    void recheck() {
+        queueScan();
+    }
+
     private void scan() {
         if (escaping) return;
         String pkg = currentPkg();
         if (TELEGRAM.contains(pkg)) {
+            timer.hide();
             scanTelegram();
             return;
         }
         String what = detect(pkg);
+        if (what == null || what.equals(ADULT)) timer.hide();
         if (what == null) return;
         if (what.equals(ADULT)) leave(pkg, "Adult site blocked");
         else gate(what, pkg);
     }
 
-    private String currentPkg() {
+    String currentPkg() {
         AccessibilityNodeInfo probe = appRoot();
         if (probe == null) return "";
         String pkg = probe.getPackageName() == null ? "" : probe.getPackageName().toString();
@@ -146,7 +155,11 @@ public class GuardService extends AccessibilityService {
 
     /** Shorts/Reels is on screen: pause, allow, or strict block. */
     private void gate(String cat, String pkg) {
-        if (limits.isUnlocked(cat)) return;
+        if (limits.isUnlocked(cat)) {
+            timer.show(cat, pkg);
+            return;
+        }
+        timer.hide();
         long now = SystemClock.elapsedRealtime();
         if (limits.left(cat) == 0 && !limits.canExtend(cat)) {
             leave(pkg, Limits.label(cat) + ": daily limit reached");
@@ -180,11 +193,17 @@ public class GuardService extends AccessibilityService {
         escaping = true;
         if (message != null) Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
         // Give a closing pause screen time to reveal the app underneath.
-        handler.postDelayed(() -> escapeStep(pkg, 0), 300);
+        handler.postDelayed(() -> escapeStep(pkg, 0, 0), 300);
     }
 
-    private void escapeStep(String pkg, int step) {
-        if (!pkg.equals(currentPkg()) || detect(pkg) == null) {
+    private void escapeStep(String pkg, int step, int waits) {
+        String cur = currentPkg();
+        // The pause screen can still be on top; giving up here would let the Short play and pause again.
+        if (cur.equals(getPackageName()) && waits < 10) {
+            handler.postDelayed(() -> escapeStep(pkg, step, waits + 1), 200);
+            return;
+        }
+        if (!pkg.equals(cur) || detect(pkg) == null) {
             escaping = false;
             return;
         }
@@ -197,7 +216,7 @@ public class GuardService extends AccessibilityService {
         if (step == 0 && pkg.equals(YOUTUBE)) done = clickYoutubeHome(pkg);
         else if (step < 2 && BROWSERS.contains(pkg)) done = openSafePage(pkg);
         if (!done) performGlobalAction(GLOBAL_ACTION_BACK);
-        handler.postDelayed(() -> escapeStep(pkg, step + 1), 900);
+        handler.postDelayed(() -> escapeStep(pkg, step + 1, 0), 900);
     }
 
     private boolean clickYoutubeHome(String pkg) {
