@@ -1,0 +1,10 @@
+build/
+*.apk
+*.zip
+*.keystore
+*.jks
+.DS_Store
+*.idsig
+keywords.local.json
+mac/Preferences/
+CLAUDE.md
