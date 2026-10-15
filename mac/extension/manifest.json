@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Focus Guard",
-  "version": "1.1",
+  "version": "1.3",
   "description": "Pause and daily limits for YouTube Shorts and Facebook Reels; blocks adult sites.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqr+vTOFm7+7J6AA89jeyjgsf2fcpaRYYxFMtkm0VoJgetWMJL2KI5IDx5ZVJ71VyP+/5aNncLv1V0QSsAyv77vyM5RH1KQvS8LBU9Lm8HU2XQ8BvlKtYDIC4YssZ+1/PV/ModDFaNmPpTEH4FJuHR2ImjzA7Fr65AmH7NN2B2gnU+ANDB2NznauS1tirvqWbgXfeZaQTrPzPq83ZTjbcGqeMJ2LQNyrhZ8RDfM4zB+nCJORzdyBKaxhBTPsukXP66DrZzZBqArkyQ6w/poYw+RsCF5gTpZvr9G4DTxZrmofJXaw2Xg4Ky/hPQAN3XqcWITToOVZBbDP0kKtEEuSrdwIDAQAB",
   "permissions": [
