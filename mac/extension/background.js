@@ -121,6 +121,7 @@ chrome.tabs.onUpdated.addListener((tabId, info) => {
 });
 
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
+  if (msg.type === "recheck" && sender.tab) return void check(sender.tab.id, sender.tab.url);
   const run = { state: () => state(msg.cat), open: () => open(msg.cat), extend: () => extend(msg.cat) }[msg.type];
   if (run) run().then(reply);
   return true;
