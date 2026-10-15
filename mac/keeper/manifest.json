@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Focus Guard Keeper",
+  "version": "1.0",
+  "description": "Turns Focus Guard back on if it gets disabled.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqG8rcKOXOy+xOVyDSi3jiwzGXZaGkvJ5Z7CuPraQV2mEc3u8F9vhDMGqO5dVofxgVoMBh+Ura57ge4iJppjBpI2OFl2gRbJHvuKT55w0zAvf7UOlBOaVZVudPUQj62WzCOhzKuEzDSpK0biTfvsCdRwvdRuFBQZ+mVTX59l5cQrIVtQp/pRETmiJ8MMldlC5NRMjJPMa5RHqjmBOuTcnxM5Hwp4DXlfpb83XfXlH3/0xrdpmoUJUNzvgEo2RbZfja4edZJxGXyN/yVqqmS/lPMRdr+ugb0sluZ9QcABlLhXAMovbVoISwep+K1hTUSu4p9yVXSIbNc/C8cmoql8vvQIDAQAB",
+  "permissions": ["management", "alarms"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "128": "icon.png"
+  }
+}

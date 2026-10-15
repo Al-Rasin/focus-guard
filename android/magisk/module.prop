@@ -1,0 +1,6 @@
+id=focusguard
+name=Focus Guard
+version=1.2
+versionCode=3
+author=alrasin
+description=Installs and guards Focus Guard: pause before Shorts/Reels, adult sites blocked (hosts + Private DNS). Reinstalls and rebinds itself. Tap Action for status.
