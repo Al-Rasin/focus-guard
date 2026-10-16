@@ -107,8 +107,8 @@ restart_if_changed com.brave.Browser.plist "Brave Browser"
 # ---- extension files stay root-owned ----
 chown -R root:wheel "$DIR"; chmod -R go-w "$DIR"
 
-# ---- adult hosts list ----
-if ! grep -q '# focusguard-adult-start' $HOSTS; then
-  { echo '# focusguard-adult-start'; cat "$DIR/adult_hosts"; echo '# focusguard-adult-end'; } >> $HOSTS
+# ---- adult hosts list: off on the Mac (owner, 2026-10-16); Brave's family DNS still filters ----
+if grep -q '# focusguard-adult-start' $HOSTS; then
+  sed -i '' '/# focusguard-adult-start/,/# focusguard-adult-end/d' $HOSTS
   dscacheutil -flushcache; killall -HUP mDNSResponder
 fi
