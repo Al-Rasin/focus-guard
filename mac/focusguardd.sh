@@ -52,7 +52,7 @@ blocklist() {  # $1 = scheme (chrome|brave), $2 = profile root
 }
 
 # Plain DNS (port 53) is intercepted by the ISP, so family DNS only works encrypted, inside the browser.
-COMMON='"RestoreOnStartup": 1, "IncognitoModeAvailability": 1, "BrowserGuestModeEnabled": false, "BrowserAddPersonEnabled": false,
+COMMON='"RestoreOnStartup": 1, "BrowserGuestModeEnabled": false, "BrowserAddPersonEnabled": false,
   "DnsOverHttpsMode": "secure", "DnsOverHttpsTemplates": "https://doh.cleanbrowsing.org/doh/adult-filter/", "ForceGoogleSafeSearch": true, "SafeSitesFilterBehavior": 1'
 
 # Chrome GenAI features stay off (owner's earlier choice, used to live in this same plist).
@@ -91,9 +91,10 @@ restart_if_changed() {  # $1 = plist name, $2 = app name
   launchctl asuser "$(id -u "$user")" sudo -u "$user" open -a "$2"
 }
 
-write_policy com.google.Chrome.plist "$COMMON, $CHROME_EXTRA,
+# Private windows: allowed in Chrome (owner's choice, 2026-10-16), off in Brave.
+write_policy com.google.Chrome.plist "$COMMON, $CHROME_EXTRA, \"IncognitoModeAvailability\": 0,
   \"URLBlocklist\": [ $(blocklist chrome 'Library/Application Support/Google/Chrome') ]"
-write_policy com.brave.Browser.plist "$COMMON, \"TorDisabled\": true,
+write_policy com.brave.Browser.plist "$COMMON, \"IncognitoModeAvailability\": 1, \"TorDisabled\": true,
   \"URLBlocklist\": [ $(blocklist brave 'Library/Application Support/BraveSoftware/Brave-Browser') ]"
 
 restart_if_changed com.google.Chrome.plist "Google Chrome"
