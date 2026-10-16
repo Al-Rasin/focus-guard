@@ -8,12 +8,15 @@ import android.content.Intent;
 import android.os.Handler;
 import android.os.Build;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.os.SystemClock;
+import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.accessibility.AccessibilityWindowInfo;
 import android.widget.Toast;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -56,9 +59,21 @@ public class GuardService extends AccessibilityService {
     private Limits limits;
     private Keywords keywords;
     private SessionTimer timer;
-    private long lastPauseAt, lastKickAt, lastScan;
+    private static final long HEARTBEAT_MS = 5000, ESCAPE_STALE_MS = 15_000;
+
+    private long lastPauseAt, lastKickAt, lastScan, escapeStartedAt;
     private boolean scanQueued, escaping;
     private final Runnable rescan = this::queueScan;
+    private final Runnable heartbeat = this::heartbeat;
+    private File alive;
+    private String lastTrace;
+
+    /** Decision log (`adb logcat -s FocusGuard`), only when it changes. */
+    private void trace(String msg) {
+        if (msg.equals(lastTrace)) return;
+        lastTrace = msg;
+        Log.i("FocusGuard", msg);
+    }
 
     @Override
     protected void onServiceConnected() {
@@ -70,12 +85,34 @@ public class GuardService extends AccessibilityService {
         nm.createNotificationChannel(new NotificationChannel(
                 "status", "Opens left", NotificationManager.IMPORTANCE_LOW));
         nm.cancel(1); // older builds kept a permanent notification
+        alive = new File(getFilesDir(), "heartbeat");
+        handler.removeCallbacks(heartbeat);
+        heartbeat();
+    }
 
+    /**
+     * Self-healing tick. Re-checks the screen without waiting for events (a playing Short sends
+     * none, and missed events must not leave a Short open), frees a stuck escape, and touches
+     * files/heartbeat: the module's watchdog restarts the app when that file goes stale while
+     * the screen is on (process frozen or wedged).
+     */
+    private void heartbeat() {
+        if (escaping && SystemClock.elapsedRealtime() - escapeStartedAt > ESCAPE_STALE_MS) {
+            trace("escape stuck, reset");
+            escaping = false;
+        }
+        try {
+            if (!alive.setLastModified(System.currentTimeMillis())) alive.createNewFile();
+        } catch (java.io.IOException ignored) {
+        }
+        if (getSystemService(PowerManager.class).isInteractive()) queueScan();
+        handler.postDelayed(heartbeat, HEARTBEAT_MS);
     }
 
     @Override
     public boolean onUnbind(Intent intent) {
         instance = null;
+        handler.removeCallbacksAndMessages(null);
         if (timer != null) timer.hide();
         return super.onUnbind(intent);
     }
@@ -113,7 +150,10 @@ public class GuardService extends AccessibilityService {
     }
 
     private void scan() {
-        if (escaping) return;
+        if (escaping) {
+            trace("skip: escaping");
+            return;
+        }
         String pkg = currentPkg();
         if (TELEGRAM.contains(pkg)) {
             timer.hide();
@@ -121,6 +161,7 @@ public class GuardService extends AccessibilityService {
             return;
         }
         String what = detect(pkg);
+        trace("scan " + pkg + " -> " + what);
         if (what == null || what.equals(ADULT)) timer.hide();
         if (what == null) return;
         if (what.equals(ADULT)) leave(pkg, "Adult site blocked");
@@ -156,6 +197,7 @@ public class GuardService extends AccessibilityService {
     /** Shorts/Reels is on screen: pause, allow, or strict block. */
     private void gate(String cat, String pkg) {
         if (limits.isUnlocked(cat)) {
+            trace("gate " + cat + ": unlocked");
             timer.show(cat, pkg);
             return;
         }
@@ -165,15 +207,16 @@ public class GuardService extends AccessibilityService {
             leave(pkg, Limits.label(cat) + ": daily limit reached");
             return;
         }
-        if (PauseActivity.showing) return;
         long wait = 3000 - (now - lastPauseAt);
         if (wait > 0) {
             // A playing Short sends no more events, so check again once the cooldown ends.
             handler.removeCallbacks(rescan);
             handler.postDelayed(rescan, wait);
+            trace("gate " + cat + ": cooldown " + wait);
             return;
         }
         lastPauseAt = now;
+        trace("gate " + cat + ": pause");
         Intent i = new Intent(this, PauseActivity.class)
                 .putExtra("cat", cat)
                 .putExtra("pkg", pkg)
@@ -191,6 +234,8 @@ public class GuardService extends AccessibilityService {
         if (escaping || now - lastKickAt < 1500) return;
         lastKickAt = now;
         escaping = true;
+        escapeStartedAt = now;
+        trace("leave " + pkg);
         if (message != null) Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
         // Give a closing pause screen time to reveal the app underneath.
         handler.postDelayed(() -> escapeStep(pkg, 0, 0), 300);

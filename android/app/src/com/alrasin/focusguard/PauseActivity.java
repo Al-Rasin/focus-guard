@@ -15,8 +15,6 @@ import android.widget.TextView;
 
 /** Full-screen pause shown before Shorts/Reels: wait, then open (spends one) or go home. */
 public class PauseActivity extends Activity {
-    static boolean showing;
-
     private String cat, pkg;
     private CountDownTimer timer;
 
@@ -94,18 +92,6 @@ public class PauseActivity extends Activity {
                 open.setAlpha(1f);
             }
         }.start();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        showing = true;
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        showing = false;
     }
 
     @Override

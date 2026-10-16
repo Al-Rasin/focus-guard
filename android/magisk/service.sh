@@ -9,6 +9,7 @@ APK_VERSION=$(cat "$MODDIR/apk_version" 2>/dev/null)
 LOG=$MODDIR/watchdog.log
 PIDFILE=$MODDIR/watchdog.pid
 PREFS=/data/data/$PKG/shared_prefs/limits.xml
+BEAT=/data/data/$PKG/files/heartbeat
 
 log() {
   echo "$(date '+%m-%d %H:%M:%S') $*" >> "$LOG"
@@ -62,6 +63,17 @@ while true; do
     *) settings put secure enabled_accessibility_services "$cur:$SVC" ;;
   esac
   settings put secure accessibility_enabled 1
+
+  # 1a. Bound but wedged (seen on MIUI: a Short played with the pause long expired, fixed by a
+  #     restart). The service touches files/heartbeat every 5 s; stale for 60 s with the
+  #     screen on means it stopped working. Force-stop it; 1b below binds it again.
+  if [ -f "$BEAT" ] && dumpsys power | grep -q "mWakefulness=Awake" \
+     && [ $(( $(date +%s) - $(stat -c %Y "$BEAT") )) -gt 60 ]; then
+    am force-stop $PKG
+    touch "$BEAT" # give the restarted service time to beat again
+    sleep 1
+    log "service stopped responding, restarted"
+  fi
 
   # 1b. Enabled is not enough: after a force-stop Android keeps it listed but unbound.
   #     Toggle it off and on to make the system bind it again.

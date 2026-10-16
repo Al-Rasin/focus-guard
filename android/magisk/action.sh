@@ -12,6 +12,8 @@ pid=$(cat "$MODDIR/watchdog.pid" 2>/dev/null)
 check "Watchdog running" "[ -n '$pid' ] && grep -q service.sh /proc/$pid/cmdline"
 check "App installed" "pm path $PKG"
 check "Accessibility bound" "dumpsys accessibility | grep 'Bound services' | grep -q 'label=Focus Guard'"
+beat=/data/data/$PKG/files/heartbeat
+check "Service responding" "[ \$(( \$(date +%s) - \$(stat -c %Y $beat) )) -le 15 ]"
 check "Adult hosts block" "grep -q '# focusguard-adult-start' '$HOSTS'"
 check "Private DNS filter" "[ \"\$(settings get global private_dns_specifier)\" = \"\$(cat $MODDIR/private_dns)\" ]"
 
