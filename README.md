@@ -37,7 +37,7 @@ sudo ./mac/install.sh
 
 Then in Chrome and Brave: extensions page → Developer mode → Load unpacked → pick
 `/Library/Application Support/FocusGuard/extension`, then again for `.../keeper`.
-A root daemon enforces browser policies: no guest mode; in Brave also no private windows, SafeSearch and filtered DoH.
+A root daemon enforces browser policies (no guest mode, SafeSearch, filtered DoH; no private windows in Brave) and the hosts block.
 The two extensions re-enable each other if one is turned off.
 
 To remove: `sudo ./mac/uninstall.sh` schedules removal 24 h later (`cancel` withdraws it).

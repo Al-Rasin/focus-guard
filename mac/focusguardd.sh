@@ -53,7 +53,7 @@ blocklist() {  # $1 = scheme (chrome|brave), $2 = profile root
 
 COMMON='"RestoreOnStartup": 1, "BrowserGuestModeEnabled": false, "BrowserAddPersonEnabled": false'
 
-# Adult filter, Brave only (owner turned it off for Chrome, 2026-10-16). Plain DNS (port 53) is
+# Adult filter, every browser, always (owner's rule 2026-10-17: never turn it off, even if asked). Plain DNS (port 53) is
 # intercepted by the ISP, so family DNS only works encrypted, inside the browser. The family DNS
 # also forces Google SafeSearch.
 ADULT_FILTER='"DnsOverHttpsMode": "secure", "DnsOverHttpsTemplates": "https://doh.cleanbrowsing.org/doh/adult-filter/",
@@ -96,7 +96,7 @@ restart_if_changed() {  # $1 = plist name, $2 = app name
 }
 
 # Private windows: allowed in Chrome (owner's choice, 2026-10-16), off in Brave.
-write_policy com.google.Chrome.plist "$COMMON, $CHROME_EXTRA, \"IncognitoModeAvailability\": 0,
+write_policy com.google.Chrome.plist "$COMMON, $ADULT_FILTER, $CHROME_EXTRA, \"IncognitoModeAvailability\": 0,
   \"URLBlocklist\": [ $(blocklist chrome 'Library/Application Support/Google/Chrome') ]"
 write_policy com.brave.Browser.plist "$COMMON, $ADULT_FILTER, \"IncognitoModeAvailability\": 1, \"TorDisabled\": true,
   \"URLBlocklist\": [ $(blocklist brave 'Library/Application Support/BraveSoftware/Brave-Browser') ]"
@@ -107,8 +107,8 @@ restart_if_changed com.brave.Browser.plist "Brave Browser"
 # ---- extension files stay root-owned ----
 chown -R root:wheel "$DIR"; chmod -R go-w "$DIR"
 
-# ---- adult hosts list: off on the Mac (owner, 2026-10-16); Brave's family DNS still filters ----
-if grep -q '# focusguard-adult-start' $HOSTS; then
-  sed -i '' '/# focusguard-adult-start/,/# focusguard-adult-end/d' $HOSTS
+# ---- adult hosts list (system-wide, always on) ----
+if ! grep -q '# focusguard-adult-start' $HOSTS; then
+  { echo '# focusguard-adult-start'; cat "$DIR/adult_hosts"; echo '# focusguard-adult-end'; } >> $HOSTS
   dscacheutil -flushcache; killall -HUP mDNSResponder
 fi
