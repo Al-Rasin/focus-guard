@@ -79,7 +79,7 @@ while true; do
   #     Toggle it off and on to make the system bind it again.
   if ! dumpsys accessibility | grep "Bound services" | grep -q "label=Focus Guard"; then
     cur=$(settings get secure enabled_accessibility_services)
-    rest=$(echo "$cur" | tr ':' '\n' | grep -v "$PKG" | paste -sd: -)
+    rest=$(echo "$cur" | tr ':' '\n' | grep -v -e "$PKG" -e "^null$" | paste -sd: -)
     if [ -n "$rest" ]; then settings put secure enabled_accessibility_services "$rest"
     else settings delete secure enabled_accessibility_services; fi
     sleep 1
