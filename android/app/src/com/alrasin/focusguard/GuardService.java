@@ -94,18 +94,24 @@ public class GuardService extends AccessibilityService {
      * Self-healing tick. Re-checks the screen without waiting for events (a playing Short sends
      * none, and missed events must not leave a Short open), frees a stuck escape, and touches
      * files/heartbeat: the module's watchdog restarts the app when that file goes stale while
-     * the screen is on (process frozen or wedged).
+     * the screen is on. Seen on MIUI: frozen process, or bound but blind (no windows at all,
+     * every scan sees nothing); a blind service stops beating so it gets restarted too.
      */
     private void heartbeat() {
         if (escaping && SystemClock.elapsedRealtime() - escapeStartedAt > ESCAPE_STALE_MS) {
             trace("escape stuck, reset");
             escaping = false;
         }
-        try {
-            if (!alive.setLastModified(System.currentTimeMillis())) alive.createNewFile();
-        } catch (java.io.IOException ignored) {
+        boolean on = getSystemService(PowerManager.class).isInteractive();
+        if (on && blind()) {
+            trace("blind: no windows");
+        } else {
+            try {
+                if (!alive.setLastModified(System.currentTimeMillis())) alive.createNewFile();
+            } catch (java.io.IOException ignored) {
+            }
         }
-        if (getSystemService(PowerManager.class).isInteractive()) queueScan();
+        if (on) queueScan();
         handler.postDelayed(heartbeat, HEARTBEAT_MS);
     }
 
@@ -166,6 +172,14 @@ public class GuardService extends AccessibilityService {
         if (what == null) return;
         if (what.equals(ADULT)) leave(pkg, "Adult site blocked");
         else gate(what, pkg);
+    }
+
+    private boolean blind() {
+        if (!getWindows().isEmpty()) return false;
+        AccessibilityNodeInfo root = getRootInActiveWindow();
+        if (root == null) return true;
+        root.recycle();
+        return false;
     }
 
     String currentPkg() {
