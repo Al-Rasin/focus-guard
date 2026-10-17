@@ -95,8 +95,9 @@ restart_if_changed() {  # $1 = plist name, $2 = app name
   launchctl asuser "$(id -u "$user")" sudo -u "$user" open -a "$2"
 }
 
-# Chrome is left unrestricted (owner's choice, 2026-10-17): only the GenAI settings. Brave keeps everything.
-write_policy com.google.Chrome.plist "$CHROME_EXTRA"
+# Private windows: allowed in Chrome (owner's choice, 2026-10-16), off in Brave.
+write_policy com.google.Chrome.plist "$COMMON, $CHROME_EXTRA, \"IncognitoModeAvailability\": 0,
+  \"URLBlocklist\": [ $(blocklist chrome 'Library/Application Support/Google/Chrome') ]"
 write_policy com.brave.Browser.plist "$COMMON, $ADULT_FILTER, \"IncognitoModeAvailability\": 1, \"TorDisabled\": true,
   \"URLBlocklist\": [ $(blocklist brave 'Library/Application Support/BraveSoftware/Brave-Browser') ]"
 
