@@ -39,7 +39,9 @@ installed_version() {
 # action during call" dialog, so the accessibility steps wait for the next loop after it.
 in_call() {
   dumpsys telephony.registry 2>/dev/null | grep -q 'mCallState=[12]' && return 0
-  dumpsys audio 2>/dev/null | grep -qE 'mMode=MODE_IN_(CALL|COMMUNICATION)'
+  # MIUI's dumpsys audio has no current mMode line; a VoIP call (WhatsApp, ...) shows as a started
+  # player with usage=USAGE_VOICE_COMMUNICATION.
+  dumpsys audio 2>/dev/null | grep -qE 'mMode=MODE_IN_(CALL|COMMUNICATION)|AudioPlaybackConfiguration .*state:started .*usage=USAGE_VOICE_COMMUNICATION'
 }
 
 while true; do
