@@ -34,6 +34,14 @@ installed_version() {
   dumpsys package $PKG 2>/dev/null | grep -m1 -o 'versionCode=[0-9]*' | cut -d= -f2
 }
 
+# A phone call (ringing/off-hook on any SIM) or VoIP call is active. During a call Google
+# Play services' scam guard blocks every accessibility change and shows a "Can't complete
+# action during call" dialog, so the accessibility steps wait for the next loop after it.
+in_call() {
+  dumpsys telephony.registry 2>/dev/null | grep -q 'mCallState=[12]' && return 0
+  dumpsys audio 2>/dev/null | grep -qE 'mMode=MODE_IN_(CALL|COMMUNICATION)'
+}
+
 while true; do
   # 0. App present and at least the bundled version (reinstalls after an uninstall).
   if [ -f "$MODDIR/FocusGuard.apk" ] && [ -n "$APK_VERSION" ]; then
@@ -55,36 +63,42 @@ while true; do
     log "restored open counts"
   fi
 
-  # 1. Accessibility service on (keep any other enabled services).
-  cur=$(settings get secure enabled_accessibility_services)
-  case "$cur" in
-    *"$SVC"*) ;;
-    null|"") settings put secure enabled_accessibility_services "$SVC" ;;
-    *) settings put secure enabled_accessibility_services "$cur:$SVC" ;;
-  esac
-  settings put secure accessibility_enabled 1
-
-  # 1a. Bound but wedged (seen on MIUI: a Short played with the pause long expired, fixed by a
-  #     restart). The service touches files/heartbeat every 5 s; stale for 60 s with the
-  #     screen on means it stopped working. Force-stop it; 1b below binds it again.
-  if [ -f "$BEAT" ] && dumpsys power | grep -q "mWakefulness=Awake" \
-     && [ $(( $(date +%s) - $(stat -c %Y "$BEAT") )) -gt 60 ]; then
-    am force-stop $PKG
-    touch "$BEAT" # give the restarted service time to beat again
-    sleep 1
-    log "service stopped responding, restarted"
-  fi
-
-  # 1b. Enabled is not enough: after a force-stop Android keeps it listed but unbound.
-  #     Toggle it off and on to make the system bind it again.
-  if ! dumpsys accessibility | grep "Bound services" | grep -q "label=Focus Guard"; then
+  # 1. Accessibility service on (keep any other enabled services). Skipped during a call
+  #    (see in_call) up to the end of 1b.
+  if in_call; then
+    [ -z "$call_logged" ] && log "call active, accessibility checks paused" && call_logged=1
+  else
+    [ -n "$call_logged" ] && log "call ended, accessibility checks resumed" && call_logged=
     cur=$(settings get secure enabled_accessibility_services)
-    rest=$(echo "$cur" | tr ':' '\n' | grep -v -e "$PKG" -e "^null$" | paste -sd: -)
-    if [ -n "$rest" ]; then settings put secure enabled_accessibility_services "$rest"
-    else settings delete secure enabled_accessibility_services; fi
-    sleep 1
-    settings put secure enabled_accessibility_services "${rest:+$rest:}$SVC"
-    log "rebound accessibility service"
+    case "$cur" in
+      *"$SVC"*) ;;
+      null|"") settings put secure enabled_accessibility_services "$SVC" ;;
+      *) settings put secure enabled_accessibility_services "$cur:$SVC" ;;
+    esac
+    [ "$(settings get secure accessibility_enabled)" = 1 ] || settings put secure accessibility_enabled 1
+
+    # 1a. Bound but wedged (seen on MIUI: a Short played with the pause long expired, fixed by a
+    #     restart). The service touches files/heartbeat every 5 s; stale for 60 s with the
+    #     screen on means it stopped working. Force-stop it; 1b below binds it again.
+    if [ -f "$BEAT" ] && dumpsys power | grep -q "mWakefulness=Awake" \
+       && [ $(( $(date +%s) - $(stat -c %Y "$BEAT") )) -gt 60 ]; then
+      am force-stop $PKG
+      touch "$BEAT" # give the restarted service time to beat again
+      sleep 1
+      log "service stopped responding, restarted"
+    fi
+
+    # 1b. Enabled is not enough: after a force-stop Android keeps it listed but unbound.
+    #     Toggle it off and on to make the system bind it again.
+    if ! dumpsys accessibility | grep "Bound services" | grep -q "label=Focus Guard"; then
+      cur=$(settings get secure enabled_accessibility_services)
+      rest=$(echo "$cur" | tr ':' '\n' | grep -v -e "$PKG" -e "^null$" | paste -sd: -)
+      if [ -n "$rest" ]; then settings put secure enabled_accessibility_services "$rest"
+      else settings delete secure enabled_accessibility_services; fi
+      sleep 1
+      settings put secure enabled_accessibility_services "${rest:+$rest:}$SVC"
+      log "rebound accessibility service"
+    fi
   fi
 
   # 2. Never killed by battery saver / MIUI.
