@@ -45,6 +45,9 @@ To remove: `sudo ./mac/uninstall.sh` schedules removal 24 h later (`cancel` with
 ## Personal keywords
 
 Put your own entries in `android/app/assets/keywords.local.json` (same format as `keywords.json`, ignored by git).
+Then give `/Library/Application Support/FocusGuard/focusguard-runner` Full Disk Access (System Settings →
+Privacy & Security → Full Disk Access → +). Without it the daemon can't see that the extensions are loaded
+and hard-blocks Shorts and facebook.com. Building it needs Xcode or the Command Line Tools.
 Both Android and Mac builds pick it up.
 
 ## Privacy
