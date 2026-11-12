@@ -50,6 +50,10 @@ Vivo, Huawei) and notifications. If Android stops the service, a "tap to fix" no
   Stored on the phone only, kept 60 days.
 - **Backup**: save settings to a JSON file and load them back (also on another phone, or in the Mac extension).
 - **Language**: English or Bangla (follows the phone, or pick one).
+- **Screens**: Home (targets with app icons, opens left, usage bar), Stats, Settings tabs. Presets
+  (light / medium / strict) on each target. The pause screen shows a breathing circle with the countdown
+  inside, how often you opened it today, and lets you pick how long to open it (e.g. 1 / 5 / 10 / 15 min).
+  Stats include a minutes-per-day chart for the last 7 days.
 
 ### With root (Magisk)
 

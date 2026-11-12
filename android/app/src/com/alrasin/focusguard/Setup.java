@@ -194,7 +194,7 @@ final class Setup {
     private static void step(Activity a, LinearLayout box, String label, boolean ok, String action, Runnable run) {
         LinearLayout row = Ui.row(a);
         row.setPadding(0, Ui.dp(a, 8), 0, Ui.dp(a, 4));
-        row.addView(Ui.left(a, (ok ? "✓  " : "○  ") + label, 15, ok ? Ui.GREEN : Ui.WHITE), Ui.grow());
+        row.addView(Ui.left(a, (ok ? "✓  " : "○  ") + L.t(a, label), 15, ok ? Ui.GREEN : Ui.WHITE), Ui.grow());
         if (!ok && action != null) {
             Button b = Ui.small(a, action);
             b.setBackground(Ui.round(a, Ui.SKY, 14));

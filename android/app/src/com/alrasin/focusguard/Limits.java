@@ -164,10 +164,15 @@ final class Limits {
 
     /** Spend one open and start the unlock window. */
     void open(String cat) {
+        open(cat, openMs(cat));
+    }
+
+    /** Spend one open for a session the user picked; never longer than openMs(). */
+    void open(String cat, long ms) {
         long now = now();
         prefs.edit()
                 .putInt(today() + "_" + cat, used(cat) + 1)
-                .putLong("until_" + cat, now + openMs(cat))
+                .putLong("until_" + cat, now + Math.min(ms, openMs(cat)))
                 .putLong("last_" + cat, now)
                 .putInt("vid_now_" + cat, 0)
                 .apply();

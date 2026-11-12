@@ -139,17 +139,18 @@ final class Stats {
         Day week = sum(a, p, 0, 7), before = sum(a, p, 7, 7);
         root.addView(Ui.space(a, 10));
         StringBuilder sb = new StringBuilder();
-        sb.append("Last 7 days: ").append(week.opens).append(" opens, ")
-                .append(week.skips).append(" times you went back, ").append(min(week.seconds));
-        if (week.videos > 0) sb.append(", ").append(week.videos).append(" videos");
-        sb.append('.');
+        sb.append(L.t(a, "Last 7 days: " + week.opens + " opens, " + week.skips + " times you went back, "
+                + (week.seconds + 59) / 60 + " min"));
+        if (week.videos > 0) sb.append(L.t(a, ", " + week.videos + " videos"));
+        sb.append(L.bangla(a) ? "।" : ".");
         if (before.any) {
             int diff = (before.seconds - week.seconds + 30) / 60;
-            if (diff > 0) sb.append(" ").append(diff).append(" min less than the week before.");
-            else if (diff < 0) sb.append(" ").append(-diff).append(" min more than the week before.");
-            else sb.append(" Same as the week before.");
+            sb.append(' ').append(L.t(a, diff > 0 ? diff + " min less than the week before."
+                    : diff < 0 ? -diff + " min more than the week before." : "Same as the week before."));
         }
         root.addView(Ui.left(a, sb.toString(), 14, Ui.MUTED));
+
+        addChart(a, m, p, root);
 
         // Per-day list, newest first; days without any data are skipped.
         Calendar c = Clock.calendar(a);
@@ -168,6 +169,47 @@ final class Stats {
             root.addView(Ui.space(a, 6));
             root.addView(list);
         }
+    }
+
+    private static final String[] BN_DAYS = {"র", "সো", "ম", "বু", "বৃ", "শু", "শ"};
+
+    /** Bar chart of minutes over the last 7 days, oldest left, today in sky blue. */
+    private static void addChart(Activity a, MainActivity m, SharedPreferences p, LinearLayout root) {
+        root.addView(m.section("Minutes per day"));
+        Calendar c = Clock.calendar(a);
+        c.add(Calendar.DAY_OF_YEAR, -6);
+        int[] mins = new int[7];
+        String[] labels = new String[7];
+        SimpleDateFormat f = new SimpleDateFormat("EEEEE", Locale.US);
+        int max = 1;
+        for (int i = 0; i < 7; i++) {
+            mins[i] = (day(p, dayKey(c)).seconds + 59) / 60;
+            labels[i] = L.bangla(a) ? BN_DAYS[c.get(Calendar.DAY_OF_WEEK) - 1] : f.format(c.getTime());
+            max = Math.max(max, mins[i]);
+            c.add(Calendar.DAY_OF_YEAR, 1);
+        }
+        LinearLayout box = Ui.column(a);
+        box.setBackground(Ui.round(a, Ui.CARD, 14));
+        int pad = Ui.dp(a, 14);
+        box.setPadding(pad, pad, pad, pad);
+        LinearLayout bars = Ui.row(a);
+        bars.setGravity(android.view.Gravity.BOTTOM);
+        int h = Ui.dp(a, 110);
+        for (int i = 0; i < 7; i++) {
+            LinearLayout col = Ui.column(a);
+            col.setGravity(android.view.Gravity.BOTTOM | android.view.Gravity.CENTER_HORIZONTAL);
+            col.addView(Ui.text(a, mins[i] > 0 ? String.valueOf(mins[i]) : "", 11, Ui.MUTED));
+            android.view.View bar = new android.view.View(a);
+            bar.setBackground(Ui.round(a, i == 6 ? Ui.SKY : "#3B4A60", 4));
+            int bh = mins[i] == 0 ? Ui.dp(a, 3) : Math.max(Ui.dp(a, 6), h * mins[i] / max);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(Ui.dp(a, 18), bh);
+            lp.topMargin = Ui.dp(a, 4);
+            col.addView(bar, lp);
+            col.addView(Ui.text(a, labels[i], 12, i == 6 ? Ui.SKY : "#6B7280"));
+            bars.addView(col, new LinearLayout.LayoutParams(0, h + Ui.dp(a, 40), 1f));
+        }
+        box.addView(bars, Ui.wide());
+        root.addView(box, Ui.wide());
     }
 
     private static LinearLayout tile(Context a, String big, String small) {

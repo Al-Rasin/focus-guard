@@ -131,3 +131,9 @@ keep-alive; without it, the app does it itself. No Gradle, no libraries, UI buil
   timer tab, ideas) and the same backup file (only shorts/reels/facebook used). Looser changes
   on Mac always wait 24 h; daily cap, max videos, "why" prompt and whole-app mode are kept in
   the file but not enforced there.
+- UI/UX rework (2026-11-12): bottom tabs (Home / Stats / Settings), target cards with app icon,
+  opens-left pill and usage bar, presets light/medium/strict on the edit screen, app picker with
+  icons. Pause screen: app icon, "opened N times today", breathing circle (4 s in/out) with the
+  countdown inside, open-length chips (1/5/10/15/30/60 min below the max, plus the max; open spends
+  one open either way), "I don't want to open" as the main button. Stats: 7-bar minutes chart.
+  Emulator-tested in Bangla: all tabs, edit, pause (chips enabled after the countdown), Go back.

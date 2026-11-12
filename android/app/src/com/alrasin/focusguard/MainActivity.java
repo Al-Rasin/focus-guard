@@ -6,12 +6,15 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Switch;
@@ -26,10 +29,12 @@ import java.util.Set;
 import java.util.function.IntConsumer;
 import java.util.function.IntSupplier;
 
-/** Launcher screen: targets with opens left, per-target settings, app picker, swap ideas. */
+/** Launcher: tabs Home (targets) / Stats / Settings, per-target settings, app picker. */
 public class MainActivity extends Activity {
-    /** Which screen is up: "home", "edit:<cat>", "pick". Back returns to home. */
+    /** Which screen is up: "home", "stats", "settings", "edit:<cat>", "pick", "strict". */
     private String screen = "home";
+    /** Last tab shown; Back from a sub-screen returns to it. */
+    private String tab = "home";
     private Config edit;
     private Limits limits;
 
@@ -43,7 +48,7 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         Strict.applyDue(this);
-        if (screen.equals("home")) home();
+        if (isTab(screen)) openTab(screen);
     }
 
     @Override
@@ -52,11 +57,16 @@ public class MainActivity extends Activity {
         else super.onActivityResult(req, res, data);
     }
 
-    /** Re-render the current screen (after a strict-mode change). */
+    private static boolean isTab(String s) {
+        return s.equals("home") || s.equals("stats") || s.equals("settings");
+    }
+
+    /** Re-render the current screen (after a strict-mode or language change). */
     void refresh() {
         if (screen.equals("strict")) strict();
-        else if (screen.startsWith("edit:")) edit(screen.substring(5));
-        else home();
+        else if (screen.startsWith("edit:")) renderEdit(screen.substring(5));
+        else if (screen.equals("pick")) picker();
+        else openTab(isTab(screen) ? screen : tab);
     }
 
     void strict() {
@@ -67,10 +77,18 @@ public class MainActivity extends Activity {
     @Override
     public void onBackPressed() {
         if (screen.equals("home")) super.onBackPressed();
+        else if (isTab(screen)) openTab("home");
+        else openTab(tab);
+    }
+
+    private void openTab(String t) {
+        tab = t;
+        if (t.equals("stats")) statsTab();
+        else if (t.equals("settings")) settingsTab();
         else home();
     }
 
-    // ---- home ---------------------------------------------------------------------------
+    // ---- tabs ---------------------------------------------------------------------------
 
     private void home() {
         screen = "home";
@@ -81,11 +99,23 @@ public class MainActivity extends Activity {
         for (String cat : Targets.all(this)) root.addView(targetCard(cat), card());
 
         Button add = Ui.small(this, "+ Add an app");
+        add.setTextColor(Color.parseColor(Ui.SKY));
+        add.setPadding(0, Ui.dp(this, 14), 0, Ui.dp(this, 14));
         add.setOnClickListener(v -> picker());
         root.addView(add, Ui.wide());
+        show(root);
+    }
 
+    private void statsTab() {
+        screen = "stats";
+        LinearLayout root = page("Stats");
         Stats.addSummary(this, root);
+        show(root);
+    }
 
+    private void settingsTab() {
+        screen = "settings";
+        LinearLayout root = page("Settings");
         root.addView(section("Do this instead"));
         root.addView(Ui.left(this, "Your own ideas, one per line. The pause screen shows one at random.",
                 14, Ui.MUTED));
@@ -109,61 +139,148 @@ public class MainActivity extends Activity {
 
     private View targetCard(String cat) {
         Config c = limits.config(cat);
-        LinearLayout row = Ui.row(this);
-        row.setBackground(Ui.round(this, Ui.CARD, 12));
+        LinearLayout box = Ui.column(this);
+        box.setBackground(Ui.round(this, Ui.CARD, 16));
         int p = Ui.dp(this, 14);
-        row.setPadding(p, p, p, p);
+        box.setPadding(p, p, p, p);
+
+        LinearLayout row = Ui.row(this);
+        row.addView(iconView(cat), new LinearLayout.LayoutParams(Ui.dp(this, 40), Ui.dp(this, 40)));
+        row.addView(Ui.space(this, 0), new LinearLayout.LayoutParams(Ui.dp(this, 12), 1));
 
         LinearLayout col = Ui.column(this);
         TextView name = Ui.left(this, Limits.label(this, cat), 17, Ui.WHITE);
         name.setTypeface(Typeface.DEFAULT_BOLD);
         col.addView(name);
         String sub;
-        if (!c.enabled) sub = "Off";
-        else if (limits.isUnlocked(cat)) sub = "Open now · " + limits.left(cat) + "/" + limits.total(cat) + " left";
+        int used = limits.used(cat), total = limits.total(cat);
+        if (!c.enabled) sub = "Not watched";
         else if (limits.hardBlock(cat) != null) sub = "Closed: " + limits.hardBlock(cat);
-        else sub = limits.left(cat) + " of " + limits.total(cat) + " opens left today"
-                    + ("whole".equals(c.mode) || Targets.wholeOnly(cat) ? " · whole app" : "");
-        col.addView(Ui.left(this, sub, 14, c.enabled ? Ui.MUTED : "#6B7280"));
+        else sub = "Opened " + used + " of " + total + " today"
+                + ("whole".equals(c.mode) || Targets.wholeOnly(cat) ? " · whole app" : "");
+        col.addView(Ui.left(this, sub, 13, c.enabled ? Ui.MUTED : "#6B7280"));
         row.addView(col, Ui.grow());
-        row.addView(Ui.text(this, "›", 24, Ui.SKY));
-        row.setOnClickListener(v -> edit(cat));
-        return row;
+
+        // Status pill.
+        String pill, color;
+        if (!c.enabled) { pill = "Off"; color = "#6B7280"; }
+        else if (limits.isUnlocked(cat)) { pill = "Open now"; color = Ui.GREEN; }
+        else if (limits.hardBlock(cat) != null || limits.left(cat) == 0) { pill = "Closed"; color = Ui.RED; }
+        else { pill = limits.left(cat) + " left"; color = Ui.SKY; }
+        TextView pt = Ui.text(this, pill, 12, color);
+        pt.setTypeface(Typeface.DEFAULT_BOLD);
+        GradientDrawable pb = Ui.round(this, Ui.BG, 20);
+        pb.setStroke(Ui.dp(this, 1), Color.parseColor(color));
+        pt.setBackground(pb);
+        pt.setPadding(Ui.dp(this, 10), Ui.dp(this, 4), Ui.dp(this, 10), Ui.dp(this, 4));
+        row.addView(pt);
+        box.addView(row);
+
+        // Opens used of today's total.
+        if (c.enabled && total > 0) {
+            box.addView(Ui.space(this, 12));
+            box.addView(bar(Math.min(1f, used / (float) total),
+                    used >= total ? Ui.RED : Ui.SKY), new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(this, 6)));
+        }
+        box.setOnClickListener(v -> edit(cat));
+        return box;
+    }
+
+    /** Horizontal progress bar filled to {@code f} (0..1). */
+    private View bar(float f, String color) {
+        LinearLayout track = Ui.row(this);
+        track.setBackground(Ui.round(this, "#2B3648", 3));
+        View fill = new View(this);
+        fill.setBackground(Ui.round(this, color, 3));
+        track.addView(fill, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, f));
+        track.addView(new View(this), new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f - f));
+        return track;
+    }
+
+    /** App icon of the first installed package of the target, else a letter in a circle. */
+    private View iconView(String cat) {
+        PackageManager pm = getPackageManager();
+        for (String pkg : Targets.packages(cat)) {
+            try {
+                Drawable d = pm.getApplicationIcon(pkg);
+                ImageView iv = new ImageView(this);
+                iv.setImageDrawable(d);
+                return iv;
+            } catch (Exception ignored) {
+            }
+        }
+        String name = Limits.label(this, cat);
+        TextView t = Ui.text(this, name.isEmpty() ? "?" : name.substring(0, 1), 18, Ui.BG);
+        t.setTypeface(Typeface.DEFAULT_BOLD);
+        GradientDrawable g = new GradientDrawable();
+        g.setShape(GradientDrawable.OVAL);
+        g.setColor(Color.parseColor(Ui.SKY));
+        t.setBackground(g);
+        return t;
     }
 
     // ---- edit ---------------------------------------------------------------------------
 
     private void edit(String cat) {
-        screen = "edit:" + cat;
         edit = limits.config(cat).copy();
+        renderEdit(cat);
+    }
+
+    /** Edit screen for the unsaved {@link #edit} copy (presets re-render it). */
+    private void renderEdit(String cat) {
+        screen = "edit:" + cat;
         LinearLayout root = page(Limits.label(this, cat));
         Strict.addPendingNote(this, root, cat);
 
-        root.addView(toggle("On", edit.enabled, b -> edit.enabled = b));
+        LinearLayout g = group(root);
+        g.addView(toggle("On", edit.enabled, b -> edit.enabled = b));
         if (Targets.hasMode(cat)) {
             String part = cat.equals(Limits.SHORTS) ? "Only Shorts" : "Only Reels";
-            root.addView(choice("Block", part, "Whole app", "whole".equals(edit.mode),
+            g.addView(choice("Block", part, "Whole app", "whole".equals(edit.mode),
                     whole -> edit.mode = whole ? "whole" : "part"));
         }
 
+        root.addView(section("Presets"));
+        LinearLayout presets = Ui.row(this);
+        String[] names = {"Gentle", "Balanced", "Strict"};
+        for (int i = 0; i < names.length; i++) {
+            int which = i;
+            Button b = Ui.small(this, names[i]);
+            b.setPadding(0, Ui.dp(this, 12), 0, Ui.dp(this, 12));
+            b.setOnClickListener(v -> {
+                preset(edit, which);
+                renderEdit(cat);
+            });
+            LinearLayout.LayoutParams lp = Ui.grow();
+            if (i > 0) lp.leftMargin = Ui.dp(this, 8);
+            presets.addView(b, lp);
+        }
+        root.addView(presets, Ui.wide());
+        root.addView(Ui.space(this, 4));
+        root.addView(Ui.left(this, "A preset fills in the numbers below. Nothing changes until you save.", 13, "#6B7280"));
+
         root.addView(section("Pause"));
-        root.addView(stepper("Pause length", "s", 0, 600, 1, () -> edit.pauseS, v -> edit.pauseS = v, null));
-        root.addView(stepper("Longer each open by", "s", 0, 60, 1, () -> edit.pauseStepS, v -> edit.pauseStepS = v, "off"));
-        root.addView(toggle("Ask why before opening", edit.askWhy, b -> edit.askWhy = b));
+        g = group(root);
+        g.addView(stepper("Pause length", "s", 0, 600, 1, () -> edit.pauseS, v -> edit.pauseS = v, null));
+        g.addView(stepper("Longer each open by", "s", 0, 60, 1, () -> edit.pauseStepS, v -> edit.pauseStepS = v, "off"));
+        g.addView(toggle("Ask why before opening", edit.askWhy, b -> edit.askWhy = b));
 
         root.addView(section("Opens"));
-        root.addView(stepper("Opens per day", "", 0, 50, 1, () -> edit.opens, v -> edit.opens = v, "none"));
-        root.addView(stepper("Minutes per open", "min", 1, 120, 1, () -> edit.openMin, v -> edit.openMin = v, null));
-        root.addView(stepper("Max minutes per day", "min", 0, 600, 5, () -> edit.dailyCapMin, v -> edit.dailyCapMin = v, "off"));
-        root.addView(stepper("Wait between opens", "min", 0, 240, 5, () -> edit.cooldownMin, v -> edit.cooldownMin = v, "off"));
+        g = group(root);
+        g.addView(stepper("Opens per day", "", 0, 50, 1, () -> edit.opens, v -> edit.opens = v, "none"));
+        g.addView(stepper("Minutes per open", "min", 1, 120, 1, () -> edit.openMin, v -> edit.openMin = v, null));
+        g.addView(stepper("Max minutes per day", "min", 0, 600, 5, () -> edit.dailyCapMin, v -> edit.dailyCapMin = v, "off"));
+        g.addView(stepper("Wait between opens", "min", 0, 240, 5, () -> edit.cooldownMin, v -> edit.cooldownMin = v, "off"));
         if (!Targets.wholeOnly(cat) && !Limits.FACEBOOK.equals(cat))
-            root.addView(stepper("End open after videos", "", 0, 200, 1, () -> edit.maxVideos, v -> edit.maxVideos = v, "off"));
-        root.addView(toggle("Time-left tab", edit.timer, b -> edit.timer = b));
+            g.addView(stepper("End open after videos", "", 0, 200, 1, () -> edit.maxVideos, v -> edit.maxVideos = v, "off"));
+        g.addView(toggle("Time-left tab", edit.timer, b -> edit.timer = b));
 
         root.addView(section("Extend (after the last open)"));
-        root.addView(stepper("Opens added", "", 0, 20, 1, () -> edit.extOpens, v -> edit.extOpens = v, "off"));
-        root.addView(stepper("Extends per day", "", 0, 10, 1, () -> edit.extMax, v -> edit.extMax = v, "off"));
-        root.addView(stepper("Only before", ":00", 0, 24, 1, () -> edit.extCutoff, v -> edit.extCutoff = v, null));
+        g = group(root);
+        g.addView(stepper("Opens added", "", 0, 20, 1, () -> edit.extOpens, v -> edit.extOpens = v, "off"));
+        g.addView(stepper("Extends per day", "", 0, 10, 1, () -> edit.extMax, v -> edit.extMax = v, "off"));
+        g.addView(stepper("Only before", ":00", 0, 24, 1, () -> edit.extCutoff, v -> edit.extCutoff = v, null));
 
         root.addView(section("Blocked hours"));
         root.addView(Ui.left(this, "No opens at all in these windows, e.g. 22:00-07:00. One per line.", 14, Ui.MUTED));
@@ -187,7 +304,7 @@ public class MainActivity extends Activity {
             }
             edit.schedule = windows;
             Toast.makeText(this, L.t(this, Strict.save(this, edit)), Toast.LENGTH_LONG).show();
-            home();
+            openTab("home");
         });
         root.addView(save, Ui.wide());
 
@@ -197,11 +314,40 @@ public class MainActivity extends Activity {
             remove.setOnClickListener(v -> {
                 Toast.makeText(this, L.t(this, Strict.removeApp(this, cat.substring(Limits.APP_PREFIX.length()))),
                         Toast.LENGTH_LONG).show();
-                home();
+                openTab("home");
             });
             root.addView(remove, Ui.wide());
         }
         show(root);
+    }
+
+    /** 0 gentle, 1 balanced, 2 strict. Leaves on/off, mode, schedule and timer alone. */
+    static void preset(Config c, int which) {
+        int[][] v = {
+                // pause, step, opens, min, cooldown, extOpens, extMax, askWhy
+                {5, 0, 10, 15, 0, 3, 2, 0},
+                {10, 5, 6, 10, 30, 3, 1, 0},
+                {30, 10, 3, 5, 60, 0, 0, 1},
+        };
+        int[] p = v[which];
+        c.pauseS = p[0];
+        c.pauseStepS = p[1];
+        c.opens = p[2];
+        c.openMin = p[3];
+        c.cooldownMin = p[4];
+        c.extOpens = p[5];
+        c.extMax = p[6];
+        c.askWhy = p[7] == 1;
+    }
+
+    /** Rounded card box added to root; settings rows go inside. */
+    LinearLayout group(LinearLayout root) {
+        LinearLayout g = Ui.column(this);
+        g.setBackground(Ui.round(this, Ui.CARD, 14));
+        int p = Ui.dp(this, 14);
+        g.setPadding(p, Ui.dp(this, 6), p, Ui.dp(this, 6));
+        root.addView(g, Ui.wide());
+        return g;
     }
 
     // ---- app picker ---------------------------------------------------------------------
@@ -227,9 +373,16 @@ public class MainActivity extends Activity {
             if (r[1].equals(last)) continue;
             last = r[1];
             LinearLayout row = Ui.row(this);
-            row.setBackground(Ui.round(this, Ui.CARD, 10));
+            row.setBackground(Ui.round(this, Ui.CARD, 12));
             int p = Ui.dp(this, 12);
             row.setPadding(p, p, p, p);
+            try {
+                ImageView iv = new ImageView(this);
+                iv.setImageDrawable(pm.getApplicationIcon(r[1]));
+                row.addView(iv, new LinearLayout.LayoutParams(Ui.dp(this, 36), Ui.dp(this, 36)));
+                row.addView(Ui.space(this, 0), new LinearLayout.LayoutParams(Ui.dp(this, 12), 1));
+            } catch (Exception ignored) {
+            }
             LinearLayout col = Ui.column(this);
             col.addView(Ui.left(this, r[0], 16, Ui.WHITE));
             col.addView(Ui.left(this, r[1], 12, "#6B7280"));
@@ -272,7 +425,34 @@ public class MainActivity extends Activity {
         sv.setFillViewport(true);
         sv.setBackgroundColor(Color.parseColor(Ui.BG));
         sv.addView(root);
-        setContentView(sv);
+        if (!isTab(screen)) {
+            setContentView(sv);
+            return;
+        }
+        LinearLayout frame = Ui.column(this);
+        frame.setBackgroundColor(Color.parseColor(Ui.BG));
+        frame.addView(sv, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+        View line = new View(this);
+        line.setBackgroundColor(Color.parseColor(Ui.CARD));
+        frame.addView(line, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(this, 1)));
+        LinearLayout bar = Ui.row(this);
+        bar.setBackgroundColor(Color.parseColor("#131821"));
+        String[][] tabs = {{"home", "⌂", "Home"}, {"stats", "▦", "Stats"}, {"settings", "⚙", "Settings"}};
+        for (String[] t : tabs) {
+            boolean on = t[0].equals(screen);
+            String col = on ? Ui.SKY : "#6B7280";
+            LinearLayout b = Ui.column(this);
+            b.setGravity(Gravity.CENTER);
+            b.setPadding(0, Ui.dp(this, 8), 0, Ui.dp(this, 10));
+            b.addView(Ui.text(this, t[1], 18, col));
+            TextView label = Ui.text(this, t[2], 12, col);
+            if (on) label.setTypeface(Typeface.DEFAULT_BOLD);
+            b.addView(label);
+            b.setOnClickListener(v -> openTab(t[0]));
+            bar.addView(b, Ui.grow());
+        }
+        frame.addView(bar, Ui.wide());
+        setContentView(frame);
     }
 
     TextView section(String s) {
@@ -314,6 +494,11 @@ public class MainActivity extends Activity {
         };
         paint.run();
         Button minus = Ui.small(this, "−"), plus = Ui.small(this, "+");
+        for (Button b : new Button[]{minus, plus}) {
+            b.setBackground(Ui.round(this, "#2B3648", 12));
+            b.setTextColor(Color.parseColor(Ui.SKY));
+            b.setTypeface(Typeface.DEFAULT_BOLD);
+        }
         minus.setOnClickListener(v -> {
             set.accept(Math.max(min, get.getAsInt() - step));
             paint.run();
@@ -357,9 +542,9 @@ public class MainActivity extends Activity {
         Button ba = Ui.small(this, a), bb = Ui.small(this, b);
         Runnable paint = () -> {
             boolean on = "whole".equals(edit.mode);
-            ba.setBackground(Ui.round(this, on ? Ui.CARD : Ui.SKY, 14));
+            ba.setBackground(Ui.round(this, on ? "#2B3648" : Ui.SKY, 14));
             ba.setTextColor(Color.parseColor(on ? Ui.WHITE : Ui.BG));
-            bb.setBackground(Ui.round(this, on ? Ui.SKY : Ui.CARD, 14));
+            bb.setBackground(Ui.round(this, on ? Ui.SKY : "#2B3648", 14));
             bb.setTextColor(Color.parseColor(on ? Ui.BG : Ui.WHITE));
         };
         ba.setOnClickListener(v -> {

@@ -233,6 +233,44 @@ final class L {
         add("minutes", "মিনিট");
         add("day streak", "দিনের ধারা");
         add("Last 7 days", "গত ৭ দিন");
+        add("Last 7 days: %s opens, %s times you went back, %s min", "গত ৭ দিন: %s বার খোলা, %s বার ফিরে গেছেন, %s মিনিট");
+        add(", %s videos", ", %sটি ভিডিও");
+        add("%s min less than the week before.", "আগের সপ্তাহের চেয়ে %s মিনিট কম।");
+        add("%s min more than the week before.", "আগের সপ্তাহের চেয়ে %s মিনিট বেশি।");
+        add("Same as the week before.", "আগের সপ্তাহের মতোই।");
+
+        add("Minutes per day", "দিনে কত মিনিট");
+
+        // New UI
+        add("Home", "হোম");
+        add("Stats", "হিসাব");
+        add("Settings", "সেটিংস");
+        add("Presets", "তৈরি সেটিংস");
+        add("Gentle", "হালকা");
+        add("Balanced", "মাঝামাঝি");
+        add("Strict", "কড়া");
+        add("A preset fills in the numbers below. Nothing changes until you save.",
+                "তৈরি সেটিংস নিচের সংখ্যাগুলো ভরে দেয়। সেভ না করা পর্যন্ত কিছু বদলায় না।");
+        add("Open now", "এখন খোলা");
+        add("Closed", "বন্ধ");
+        add("%s left", "%s বাকি");
+        add("Off", "বন্ধ");
+        add("Not watched", "নজরে নেই");
+        add("Opened %s of %s today", "আজ %s/%s বার খোলা হয়েছে");
+        add("Opened %s of %s today · whole app", "আজ %s/%s বার খোলা হয়েছে · পুরো অ্যাপ");
+
+        // Pause screen (new)
+        add("Breathe in", "শ্বাস নিন");
+        add("Breathe out", "শ্বাস ছাড়ুন");
+        add("Opened %s times today · %s min", "আজ %s বার খোলা · %s মিনিট");
+        add("%s min", "%s মিনিট");
+        add("I don't want to open %s", "আমি %s খুলতে চাই না");
+        add("Good moment to do something else.", "অন্য কিছু করার ভালো সময়।");
+        add("Take a breath. Do you really need this now?", "একটু শ্বাস নিন। এখন কি সত্যিই দরকার?");
+        add("Wait for the timer to open it", "খুলতে টাইমার শেষ হওয়া পর্যন্ত অপেক্ষা করুন");
+        add("Write why first", "আগে কারণ লিখুন");
+        add("Or", "অথবা");
+        add("Or open it for", "অথবা খুলুন");
 
         // Keep-alive notice
         add("Focus Guard stopped", "Focus Guard থেমে গেছে");
