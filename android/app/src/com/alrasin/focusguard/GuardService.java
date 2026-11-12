@@ -418,11 +418,29 @@ public class GuardService extends AccessibilityService {
     }
 
     private void escapeStep(String pkg, int step, int waits) {
+        // Still typing the safe page (slow phone): a Back now would close the URL field.
+        if (typingSafe && waits < 20) {
+            handler.postDelayed(() -> escapeStep(pkg, step, waits + 1), 200);
+            return;
+        }
         String cur = currentPkg();
         // The pause screen can still be on top; giving up here would let the Short play and pause again.
         if (cur.equals(getPackageName()) && waits < 10) {
             handler.postDelayed(() -> escapeStep(pkg, step, waits + 1), 200);
             return;
+        }
+        // Closing the pause screen can surface our own main screen instead of the app the user
+        // was in (it has its own task now). Bring that app back once and try again.
+        if (cur.equals(getPackageName()) && waits == 10) {
+            Intent back = getPackageManager().getLaunchIntentForPackage(pkg);
+            if (back != null) {
+                try {
+                    startActivity(back.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                    handler.postDelayed(() -> escapeStep(pkg, step, 11), 600);
+                    return;
+                } catch (Exception ignored) {
+                }
+            }
         }
         String what = pkg.equals(cur) ? detect(pkg) : null;
         if (what == null) {
@@ -474,25 +492,36 @@ public class GuardService extends AccessibilityService {
     }
 
     /** Type a safe address into the URL bar of the current tab and press Enter. */
+    private boolean typingSafe;
+
     private boolean openSafePage(String pkg) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false; // needs ACTION_IME_ENTER
         AccessibilityNodeInfo bar = urlBar(pkg);
         if (bar == null) return false;
         bar.performAction(AccessibilityNodeInfo.ACTION_CLICK);
         bar.recycle();
-        handler.postDelayed(() -> {
-            AccessibilityNodeInfo root = appRoot();
-            if (root == null) return;
-            AccessibilityNodeInfo field = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
-            root.recycle();
-            if (field == null) return;
-            android.os.Bundle args = new android.os.Bundle();
-            args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, SAFE_PAGE);
-            field.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args);
-            field.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.getId());
-            field.recycle();
-        }, 350);
+        typingSafe = true;
+        handler.postDelayed(() -> typeSafePage(0), 250);
         return true;
+    }
+
+    /** Waits (slow phones) for the URL field to take focus, then loads the safe page. */
+    private void typeSafePage(int tries) {
+        AccessibilityNodeInfo root = appRoot();
+        AccessibilityNodeInfo field = root == null ? null : root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
+        if (root != null) root.recycle();
+        if (field == null || !field.isEditable()) {
+            if (field != null) field.recycle();
+            if (tries < 10) handler.postDelayed(() -> typeSafePage(tries + 1), 250);
+            else typingSafe = false;
+            return;
+        }
+        typingSafe = false;
+        android.os.Bundle args = new android.os.Bundle();
+        args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, SAFE_PAGE);
+        field.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args);
+        field.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.getId());
+        field.recycle();
     }
 
     // ---- Telegram: judge the open chat ----
