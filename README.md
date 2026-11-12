@@ -43,7 +43,9 @@ Vivo, Huawei) and notifications. If Android stops the service, a "tap to fix" no
 - **Strict mode**: loosening a setting (or turning strict mode off) waits 1–72 h, tightening applies at once.
   Optional partner PIN, one emergency open per week behind a 60 s wait, device admin against uninstall,
   and a settings guard that closes our accessibility / app info / device admin pages.
-  Can't stop: safe-mode boot, factory reset, the accessibility volume-key shortcut (the app warns about it).
+  Can't stop: safe-mode boot, factory reset, the accessibility volume-key shortcut (the app warns about it), and "Force stop" in App info
+  (on newer Android it also turns accessibility off and cancels the keep-alive job, so the app can't
+  even prompt — the settings guard closes App info to make this harder).
 - **Stats**: today's opens, times you went back, minutes, streak; last 7 days vs the week before.
   Stored on the phone only, kept 60 days.
 - **Backup**: save settings to a JSON file and load them back (also on another phone, or in the Mac extension).

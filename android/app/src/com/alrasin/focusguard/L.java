@@ -191,6 +191,8 @@ final class L {
         add("Optional: filter adult sites in all apps", "ঐচ্ছিক: সব অ্যাপে অ্যাডাল্ট সাইট ফিল্টার");
         add("Copy host & open settings", "হোস্ট কপি করে সেটিংস খুলুন");
         add("No thanks", "দরকার নেই");
+        add("Settings → Private DNS → \"Private DNS provider hostname\" → paste %s. If some sites stop loading on your network, set it back to Automatic.",
+                "Settings → Private DNS → \"Private DNS provider hostname\" → %s পেস্ট করুন। আপনার নেটওয়ার্কে কিছু সাইট না খুললে আবার Automatic করে দিন।");
         add("Copied %s", "কপি হয়েছে %s");
 
         // Strict mode

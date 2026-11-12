@@ -101,7 +101,15 @@ keep-alive; without it, the app does it itself. No Gradle, no libraries, UI buil
 1 → 2 → 5 first (settings, staying alive, adult blocking), then 3, 4, 6, 7, 8.
 
 ## Progress
-- Done (code, not device-tested): all phases 1–8 (no rename).
+- Done: all phases 1–8 (no rename). Emulator-tested 2026-11-12 (API 36, Chrome + YouTube):
+  install, main screen, accessibility bound, Chrome Shorts → pause, Go back → same tab,
+  adult URL → google.com same tab (fixed: wait for the URL field), YouTube app Shorts → pause,
+  Open → Short plays + timer tab + opens 5/6, edit screen save/reload, stats, Bangla UI
+  (one card fixed). Service off → "Focus Guard is off" notification OK.
+- Limit found: on API 36 a force-stop clears `enabled_accessibility_services` and cancels jobs,
+  so no "stopped" prompt is possible after it (documented in README).
+- Not tested yet: strict mode pending changes, PIN, emergency open, device admin, backup
+  export/import, Telegram, Instagram/TikTok, real phone (MIUI).
 - Phase 3: Instagram Reels ids need calibration with `uiautomator dump` on a device.
 - Phase 4 as built: `Strict.java` (prefs `strict`: pending `p_<cat>`, `rm_<pkg>`, `delay_at`,
   `off_at`; delay 1/6/24/72 h; salted SHA-256 PIN; emergency open once per 7 days after 60 s),
