@@ -10,6 +10,9 @@ check() { if eval "$2" >/dev/null 2>&1; then echo "  OK    $1"; else echo "  FAI
 echo "Focus Guard status"
 pid=$(cat "$MODDIR/watchdog.pid" 2>/dev/null)
 check "Watchdog running" "[ -n '$pid' ] && grep -q service.sh /proc/$pid/cmdline"
+gp=$(cat /data/adb/focusguard/guard.pid 2>/dev/null)
+check "Guardian running" "[ -n '$gp' ] && grep -q focusguard /proc/$gp/cmdline"
+[ -f /data/adb/focusguard/remove_at ] && echo "  NOTE  removal scheduled for $(date -d @$(cat /data/adb/focusguard/remove_at) '+%Y-%m-%d %H:%M')"
 check "App installed" "pm path $PKG"
 check "Accessibility bound" "dumpsys accessibility | grep 'Bound services' | grep -q 'label=Focus Guard'"
 beat=/data/data/$PKG/files/heartbeat

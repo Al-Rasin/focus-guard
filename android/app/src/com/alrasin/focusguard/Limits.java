@@ -12,6 +12,8 @@ import java.util.Locale;
 final class Limits {
     static final String SHORTS = "shorts";
     static final String REELS = "reels";
+    /** facebook.com in a browser, outside Reels and Messages. */
+    static final String FACEBOOK = "facebook";
 
     static final int PAUSE_SECONDS = 5;
     static final int DAILY_OPENS = 6;
@@ -28,7 +30,7 @@ final class Limits {
     }
 
     static String label(String cat) {
-        return SHORTS.equals(cat) ? "YouTube Shorts" : "Facebook Reels";
+        return SHORTS.equals(cat) ? "YouTube Shorts" : REELS.equals(cat) ? "Facebook Reels" : "Facebook";
     }
 
     private static String today() {
@@ -79,6 +81,7 @@ final class Limits {
 
     String summary() {
         return "Shorts " + left(SHORTS) + "/" + total(SHORTS) + " left  ·  Reels "
-                + left(REELS) + "/" + total(REELS) + " left";
+                + left(REELS) + "/" + total(REELS) + " left  ·  Facebook "
+                + left(FACEBOOK) + "/" + total(FACEBOOK) + " left";
     }
 }

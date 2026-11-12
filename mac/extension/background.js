@@ -11,8 +11,12 @@ const EXTEND_CUTOFF_HOUR = 19; // extensions only while at least 5 h of the day 
 
 const SHORTS_URL = /youtube\.com\/shorts/;
 const REELS_URL = /facebook\.com\/(reel|reels|watch\/reels)\b|fb\.watch\/|facebook\.com\/share\/r\//;
-const LABELS = { shorts: "YouTube Shorts", reels: "Facebook Reels" };
-const HOME = { shorts: "https://www.youtube.com/", reels: "https://www.facebook.com/" };
+// facebook.com outside Reels is its own category, except Messages and what logging in/opening links needs.
+const FACEBOOK_SITE = /^(https?:\/\/)?([a-z0-9-]+\.)*facebook\.com(?![a-z0-9.-])/;
+const FACEBOOK_OK = /^(https?:\/\/)?((l|lm)\.facebook\.com|([a-z0-9-]+\.)*facebook\.com\/(messages|messenger_media|login|checkpoint|recover|two_step_verification|two_factor|groupcall|videocall)(?![a-z0-9_-]))/;
+const LABELS = { shorts: "YouTube Shorts", reels: "Facebook Reels", facebook: "Facebook" };
+const HOME = { shorts: "https://www.youtube.com/", reels: "https://www.facebook.com/messages/",
+               facebook: "https://www.facebook.com/messages/" };
 
 // ---- limits (chrome.storage.local, keys like 20260928_shorts) ----
 
@@ -55,8 +59,8 @@ async function extend(cat) {
 }
 
 async function summary() {
-  const a = await state("shorts"), b = await state("reels");
-  return `Shorts ${a.left}/${a.total} left  ·  Reels ${b.left}/${b.total} left`;
+  const a = await state("shorts"), b = await state("reels"), c = await state("facebook");
+  return `Shorts ${a.left}/${a.total} left  ·  Reels ${b.left}/${b.total} left  ·  Facebook ${c.left}/${c.total} left`;
 }
 
 // ---- adult keywords (keywords.json + keywords.local.json, same matcher as Keywords.java) ----
@@ -102,6 +106,7 @@ async function check(tabId, url) {
   let cat = null;
   if (SHORTS_URL.test(lower)) cat = "shorts";
   else if (REELS_URL.test(lower)) cat = "reels";
+  else if (FACEBOOK_SITE.test(lower) && !FACEBOOK_OK.test(lower)) cat = "facebook";
   else {
     let target = lower;
     try { target = decodeURIComponent(lower); } catch (e) {}
@@ -119,6 +124,13 @@ async function check(tabId, url) {
 chrome.tabs.onUpdated.addListener((tabId, info) => {
   if (info.url) check(tabId, info.url);
 });
+
+// Tabs already open when the extension (re)loads never navigate, so gate them once now.
+async function checkAll() {
+  for (const t of await chrome.tabs.query({})) if (t.url) check(t.id, t.url);
+}
+chrome.runtime.onStartup.addListener(checkAll);
+chrome.runtime.onInstalled.addListener(checkAll);
 
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   if (msg.type === "recheck" && sender.tab) return void check(sender.tab.id, sender.tab.url);

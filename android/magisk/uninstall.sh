@@ -5,6 +5,9 @@
 # (the subshell is parsed whole before Magisk deletes this file).
 PKG=com.alrasin.focusguard
 
+# Guardian still installed = not the scheduled removal (remove.sh); it puts the module back.
+[ -f /data/adb/service.d/focusguard.sh ] && exit 0
+
 (
   until [ "$(getprop sys.boot_completed)" = 1 ]; do sleep 5; done
   sleep 10

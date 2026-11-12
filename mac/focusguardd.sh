@@ -42,14 +42,20 @@ loaded() {  # $1 = Secure Preferences file, $2 = extension ID, $3 = expected unp
 }
 
 # The two extensions re-enable each other, so the extensions page stays usable. If either is removed,
-# Shorts/Reels are hard-blocked until it's loaded again, so removing it only makes things worse.
+# Shorts and facebook.com (all but Messages) are hard-blocked until it's loaded again, so removing it
+# only makes things worse.
 blocklist() {  # $1 = scheme (chrome|brave), $2 = profile root
   if ext_ok "$2"; then
     echo ""
   else
-    echo '"youtube.com/shorts", "facebook.com/reel", "facebook.com/reels", "facebook.com/watch/reels", "fb.watch", "facebook.com/share/r"'
+    echo '"youtube.com/shorts", "facebook.com", "fb.watch"'
   fi
 }
+
+# Exceptions to the facebook.com block above (same list as FACEBOOK_OK in background.js).
+FB_ALLOW='"URLAllowlist": [ "facebook.com/messages", "facebook.com/messenger_media", "facebook.com/login",
+  "facebook.com/checkpoint", "facebook.com/recover", "facebook.com/two_step_verification", "facebook.com/two_factor",
+  "facebook.com/groupcall", "facebook.com/videocall", "l.facebook.com", "lm.facebook.com" ]'
 
 COMMON='"RestoreOnStartup": 1, "BrowserGuestModeEnabled": false, "BrowserAddPersonEnabled": false'
 
@@ -97,8 +103,10 @@ restart_if_changed() {  # $1 = plist name, $2 = app name
 
 # Private windows: allowed in Chrome (owner's choice, 2026-10-16), off in Brave.
 write_policy com.google.Chrome.plist "$COMMON, $ADULT_FILTER, $CHROME_EXTRA, \"IncognitoModeAvailability\": 0,
+  $FB_ALLOW,
   \"URLBlocklist\": [ $(blocklist chrome 'Library/Application Support/Google/Chrome') ]"
 write_policy com.brave.Browser.plist "$COMMON, $ADULT_FILTER, \"IncognitoModeAvailability\": 1, \"TorDisabled\": true,
+  $FB_ALLOW,
   \"URLBlocklist\": [ $(blocklist brave 'Library/Application Support/BraveSoftware/Brave-Browser') ]"
 
 restart_if_changed com.google.Chrome.plist "Google Chrome"

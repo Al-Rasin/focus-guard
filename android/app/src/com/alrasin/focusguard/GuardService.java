@@ -49,6 +49,12 @@ public class GuardService extends AccessibilityService {
     private static final Pattern SHORTS_URL = Pattern.compile("youtube\\.com/shorts");
     private static final Pattern REELS_URL = Pattern.compile(
             "facebook\\.com/(reel|reels|watch/reels)\\b|fb\\.watch/|facebook\\.com/share/r/");
+    // facebook.com in a browser is its own category (Limits.FACEBOOK), except Messages and what logging in/opening links needs.
+    private static final Pattern FACEBOOK_SITE = Pattern.compile(
+            "^(https?://)?([a-z0-9-]+\\.)*facebook\\.com(?![a-z0-9.-])");
+    private static final Pattern FACEBOOK_OK = Pattern.compile(
+            "^(https?://)?((l|lm)\\.facebook\\.com|([a-z0-9-]+\\.)*facebook\\.com/(messages|messenger_media|login"
+            + "|checkpoint|recover|two_step_verification|two_factor|groupcall|videocall)(?![a-z0-9_-]))");
 
     private static final int MAX_NODES = 700;
     private static final String ADULT = "adult";
@@ -133,10 +139,36 @@ public class GuardService extends AccessibilityService {
         if (pkgSeq == null) return;
         String pkg = pkgSeq.toString();
         if (pkg.equals(getPackageName())) return;
+        if (EXEMPT.contains(pkg)) {
+            stepAside(pkg);
+            return;
+        }
         if (TELEGRAM.contains(pkg) || pkg.equals(YOUTUBE) || FACEBOOK.contains(pkg)
                 || BROWSERS.contains(pkg)) {
             queueScan();
         }
+    }
+
+    /**
+     * Apps that refuse to run while a non-store accessibility service is on (bKash shows
+     * "security risk ... turn off Accessibility" and closes). While one is in front the service
+     * turns itself off; files/exempt tells the module's watchdog, which turns it back on within
+     * ~2 s once that app is no longer the focused app. Keep in sync with EXEMPT in service.sh.
+     */
+    private static final Set<String> EXEMPT = new HashSet<>(Arrays.asList("com.bKash.customerapp"));
+
+    private boolean steppedAside;
+
+    private void stepAside(String pkg) {
+        if (steppedAside) return;
+        steppedAside = true;
+        trace("exempt app " + pkg + ", turning off");
+        try {
+            new File(getFilesDir(), "exempt").createNewFile();
+        } catch (java.io.IOException ignored) {
+        }
+        if (timer != null) timer.hide();
+        disableSelf();
     }
 
     // Events arrive in bursts while scrolling; check the screen at most every 400 ms.
@@ -161,6 +193,10 @@ public class GuardService extends AccessibilityService {
             return;
         }
         String pkg = currentPkg();
+        if (EXEMPT.contains(pkg)) {
+            stepAside(pkg);
+            return;
+        }
         if (TELEGRAM.contains(pkg)) {
             timer.hide();
             scanTelegram();
@@ -190,25 +226,30 @@ public class GuardService extends AccessibilityService {
         return pkg;
     }
 
-    /** What on screen needs blocking: Limits.SHORTS, Limits.REELS, ADULT, or null. */
+    /** What on screen needs blocking: Limits.SHORTS, Limits.REELS, Limits.FACEBOOK, ADULT, or null. */
     private String detect(String pkg) {
         if (pkg.equals(YOUTUBE)) {
             if (hasVisibleId(pkg, SHORTS_IDS)) return Limits.SHORTS;
         } else if (FACEBOOK.contains(pkg)) {
             if (facebookReelsVisible()) return Limits.REELS;
         } else if (BROWSERS.contains(pkg)) {
-            String url = browserUrl(pkg);
-            if (url != null) {
-                url = url.toLowerCase();
+            AccessibilityNodeInfo bar = urlBar(pkg);
+            if (bar != null) {
+                String url = bar.getText().toString().toLowerCase();
+                boolean typing = bar.isFocused(); // "facebook.com/mess…" half typed must not kick
+                bar.recycle();
                 if (SHORTS_URL.matcher(url).find()) return Limits.SHORTS;
                 if (REELS_URL.matcher(url).find()) return Limits.REELS;
+                if (!typing && FACEBOOK_SITE.matcher(url).find() && !FACEBOOK_OK.matcher(url).find()) {
+                    return Limits.FACEBOOK;
+                }
                 if (keywords.match(url.replaceAll("[./_-]", " ")) != null) return ADULT;
             }
         }
         return null;
     }
 
-    /** Shorts/Reels is on screen: pause, allow, or strict block. */
+    /** Shorts/Reels/Facebook is on screen: pause, allow, or strict block. */
     private void gate(String cat, String pkg) {
         if (limits.isUnlocked(cat)) {
             trace("gate " + cat + ": unlocked");
@@ -419,13 +460,6 @@ public class GuardService extends AccessibilityService {
         }
     }
 
-    private String browserUrl(String pkg) {
-        AccessibilityNodeInfo bar = urlBar(pkg);
-        if (bar == null) return null;
-        String url = bar.getText().toString();
-        bar.recycle();
-        return url;
-    }
 
     /** The browser's address bar showing text, or null. Caller recycles. */
     private AccessibilityNodeInfo urlBar(String pkg) {

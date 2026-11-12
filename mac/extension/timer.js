@@ -1,8 +1,10 @@
-// Time-left tab on the screen edge over Shorts/Reels while an open is running (same as Android's
+// Time-left tab on the screen edge over Shorts/Reels/Facebook while an open is running (same as Android's
 // SessionTimer): pause-screen colours, red and pulsing in the last minute. Drag it to move it:
 // it snaps to the nearer side and the spot is remembered (timer_pos in storage).
 // When the window runs out on screen, ask the background to gate this tab again.
-const PAGES = { shorts: /youtube\.com\/shorts/, reels: /facebook\.com\/(reel|reels|watch\/reels)\b|facebook\.com\/share\/r\// };
+// Same patterns as background.js; first match wins (Reels before the rest of Facebook).
+const PAGES = { shorts: /youtube\.com\/shorts/, reels: /facebook\.com\/(reel|reels|watch\/reels)\b|facebook\.com\/share\/r\//,
+  facebook: /^https?:\/\/([a-z0-9-]+\.)*facebook\.com(?![a-z0-9.-])(?!\/(messages|messenger_media|login|checkpoint|recover|two_step_verification|two_factor|groupcall|videocall)(?![a-z0-9_-]))/ };
 let tab = null;
 let pos = { right: false, y: 0.45 }; // y = top of the tab as a fraction of the window height
 

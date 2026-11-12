@@ -7,10 +7,15 @@ It adds friction to short-form video and blocks adult content. It is hard to swi
 
 - **YouTube Shorts / Facebook Reels** (apps and browsers): a 5 s pause screen with "Go back" or "Open (15 min)".
   6 opens per day per category, then a strict block until midnight. You stay in the app, only the Short is closed.
+- **facebook.com in the browser**: its own category with the same pause, opens, extend and timer, counted
+  separately from Reels. Messages (`facebook.com/messages`) and login stay free. The Facebook app itself only gets
+  the Reels pause.
 - **Extend**: once a category is used up you can add +3 opens, at most twice a day and only before 19:00.
 - **Adult sites**: blocked system-wide with a hosts list ([StevenBlack porn-only](https://github.com/StevenBlack/hosts)) and a family-filter DNS ([CleanBrowsing](https://cleanbrowsing.org/filters/)).
 - **Adult Telegram chats** (Android): on-screen text is matched against a keyword list
   (English, Bangla, Hindi, Urdu and their romanized forms) and the chat is closed.
+- **Banking apps that reject accessibility services** (Android, currently bKash): Focus Guard
+  turns itself off while the app is open and the watchdog turns it back on ~2 s after you leave.
 
 The limits above are currently fixed in code (`Limits.java`, `mac/extension/background.js`).
 
@@ -27,7 +32,12 @@ every 30 s, keeps the accessibility service on and bound, reinstalls the app if 
 and Private DNS in place, and keeps today's counts after a data wipe. The module's **Action** button in Magisk
 shows the status of each part.
 
-To remove: remove the module in Magisk and reboot. Everything it set is undone.
+Removing or disabling the module in Magisk doesn't work: a guardian script outside the module
+(`/data/adb/service.d/focusguard.sh`, backup in `/data/adb/focusguard/`) undoes the remove/disable flag,
+puts the module back if it is deleted and restarts the watchdog; the watchdog in turn puts the guardian back.
+
+To remove: `su -c sh /data/adb/focusguard/remove.sh` schedules removal 24 h later (`cancel` withdraws it).
+Then everything it set is undone.
 
 ## macOS
 

@@ -27,4 +27,6 @@ fi
 set_perm "$MODPATH/service.sh" 0 0 0755
 set_perm "$MODPATH/action.sh" 0 0 0755
 set_perm "$MODPATH/uninstall.sh" 0 0 0755
+set_perm "$MODPATH/guard.sh" 0 0 0755
+set_perm "$MODPATH/remove.sh" 0 0 0755
 ui_print "- Reboot to start. Status: Magisk > Modules > Focus Guard > Action"

@@ -29,7 +29,7 @@ CODE=$(sed -n 's/.*android:versionCode="\([0-9]*\)".*/\1/p' app/AndroidManifest.
 NAME=$(sed -n 's/.*android:versionName="\([^"]*\)".*/\1/p' app/AndroidManifest.xml)
 MOD=$OUT/module
 mkdir -p $MOD/META-INF/com/google/android
-cp magisk/{customize.sh,service.sh,action.sh,uninstall.sh,adult_hosts,private_dns} FocusGuard.apk $MOD/
+cp magisk/{customize.sh,service.sh,action.sh,uninstall.sh,guard.sh,remove.sh,adult_hosts,private_dns} FocusGuard.apk $MOD/
 sed "s/^version=.*/version=$NAME/; s/^versionCode=.*/versionCode=$CODE/" magisk/module.prop > $MOD/module.prop
 echo "$CODE" > $MOD/apk_version
 # Standard Magisk installer stub.

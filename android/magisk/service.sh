@@ -10,6 +10,13 @@ LOG=$MODDIR/watchdog.log
 PIDFILE=$MODDIR/watchdog.pid
 PREFS=/data/data/$PKG/shared_prefs/limits.xml
 BEAT=/data/data/$PKG/files/heartbeat
+BAK=/data/adb/focusguard
+GUARD=/data/adb/service.d/focusguard.sh
+# Apps that refuse to run while our accessibility service is on (bKash). The service turns itself
+# off when one comes to the front and writes $EXEMPT_FLAG; it's turned back on once that app is no
+# longer focused. Keep in sync with EXEMPT in GuardService.java.
+EXEMPT="com.bKash.customerapp"
+EXEMPT_FLAG=/data/data/$PKG/files/exempt
 
 log() {
   echo "$(date '+%m-%d %H:%M:%S') $*" >> "$LOG"
@@ -44,7 +51,58 @@ in_call() {
   dumpsys audio 2>/dev/null | grep -qE 'mMode=MODE_IN_(CALL|COMMUNICATION)|AudioPlaybackConfiguration .*state:started .*usage=USAGE_VOICE_COMMUNICATION'
 }
 
+focused_app() {
+  dumpsys window 2>/dev/null | grep -m1 'mFocusedApp=' | grep -oE ' [A-Za-z0-9_.]+/' | tr -d ' /'
+}
+
+# An exempt app is in front and the service stepped aside for it: leave accessibility alone.
+exempt_active() {
+  [ -f "$EXEMPT_FLAG" ] || return 1
+  f=$(focused_app)
+  for e in $EXEMPT; do [ "$f" = "$e" ] && return 0; done
+  return 1
+}
+
+# Fast loop (2 s): turn the service back on as soon as the exempt app leaves the front, so it
+# can't be used as a 30 s gap. Exits with the watchdog (guardian kills only the watchdog pid).
+WD=$$
+(
+  while kill -0 $WD 2>/dev/null; do
+    sleep 2
+    if [ -f "$EXEMPT_FLAG" ] && ! exempt_active && ! in_call; then
+      rm -f "$EXEMPT_FLAG"
+      cur=$(settings get secure enabled_accessibility_services)
+      case "$cur" in
+        *"$SVC"*) ;;
+        null|"") settings put secure enabled_accessibility_services "$SVC" ;;
+        *) settings put secure enabled_accessibility_services "$cur:$SVC" ;;
+      esac
+      settings put secure accessibility_enabled 1
+      touch "$BEAT" # don't let 1a treat the pause as a hang
+      log "exempt app left, accessibility back on"
+    fi
+  done
+) &
+
 while true; do
+  # 00. Guardian (guard.sh) installed and running, and its backup of this module current.
+  #     It restores this module if deleted; this restores it if deleted.
+  mkdir -p "$BAK/module"
+  for f in "$MODDIR"/*; do
+    case "${f##*/}" in watchdog.*|limits.bak|system|update) continue ;; esac
+    cmp -s "$f" "$BAK/module/${f##*/}" || cp "$f" "$BAK/module/"
+  done
+  cmp -s "$MODDIR/remove.sh" "$BAK/remove.sh" || cp "$MODDIR/remove.sh" "$BAK/remove.sh"
+  if ! cmp -s "$MODDIR/guard.sh" "$GUARD"; then
+    mkdir -p "${GUARD%/*}" && cp "$MODDIR/guard.sh" "$GUARD" && chmod 755 "$GUARD"
+    log "installed guardian"
+  fi
+  gp=$(cat "$BAK/guard.pid" 2>/dev/null)
+  if [ -z "$gp" ] || ! grep -q focusguard /proc/$gp/cmdline 2>/dev/null; then
+    sh "$GUARD"
+    log "started guardian"
+  fi
+
   # 0. App present and at least the bundled version (reinstalls after an uninstall).
   if [ -f "$MODDIR/FocusGuard.apk" ] && [ -n "$APK_VERSION" ]; then
     v=$(installed_version)
@@ -67,7 +125,9 @@ while true; do
 
   # 1. Accessibility service on (keep any other enabled services). Skipped during a call
   #    (see in_call) up to the end of 1b.
-  if in_call; then
+  if exempt_active; then
+    : # service is off on purpose while bKash etc. is in front (fast loop above turns it back on)
+  elif in_call; then
     [ -z "$call_logged" ] && log "call active, accessibility checks paused" && call_logged=1
   else
     [ -n "$call_logged" ] && log "call ended, accessibility checks resumed" && call_logged=
@@ -107,6 +167,10 @@ while true; do
   dumpsys deviceidle whitelist +$PKG >/dev/null 2>&1
   cmd appops set $PKG RUN_IN_BACKGROUND allow 2>/dev/null
   cmd appops set $PKG RUN_ANY_IN_BACKGROUND allow 2>/dev/null
+  # MIUI must allow the blocking activity to open from the accessibility service.
+  if [ -n "$(getprop ro.miui.ui.version.name)" ]; then
+    cmd appops set $PKG 10021 allow 2>/dev/null
+  fi
 
   # 3. Adult hosts list present (AdAway rewrites the file on update).
   if [ -f "$MODDIR/adult_hosts" ] && [ -f "$HOSTS" ] && ! grep -q "$MARK" "$HOSTS"; then
