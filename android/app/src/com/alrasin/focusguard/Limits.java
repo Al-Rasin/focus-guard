@@ -110,7 +110,26 @@ final class Limits {
     }
 
     boolean isUnlocked(String cat) {
-        return now() < unlockedUntil(cat);
+        return now() < unlockedUntil(cat) && !inFocus();
+    }
+
+    /** Focus session: every target closed until this time. Can't be ended early, only made longer. */
+    long focusUntil() {
+        return prefs.getLong("focus_until", 0);
+    }
+
+    boolean inFocus() {
+        return now() < focusUntil();
+    }
+
+    void startFocus(int min) {
+        long until = Math.max(focusUntil(), now() + min * 60_000L);
+        prefs.edit().putLong("focus_until", until).apply();
+        Health.changed(ctx);
+    }
+
+    static String hhmm(long ms) {
+        return new SimpleDateFormat("HH:mm", Locale.US).format(new Date(ms));
     }
 
     long unlockedUntil(String cat) {
@@ -136,6 +155,7 @@ final class Limits {
      * daily time cap, cooldown), or null.
      */
     String hardBlock(String cat) {
+        if (inFocus()) return "focus session until " + hhmm(focusUntil());
         Config c = config(cat);
         Calendar now = Clock.calendar(ctx);
         if (c.inSchedule(now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)))

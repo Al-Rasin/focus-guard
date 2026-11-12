@@ -16,6 +16,8 @@ keep-alive; without it, the app does it itself. No Gradle, no libraries, UI buil
 | Smarter friction | Video counter, cooldown, growing pause, intention reminder, swap prompt |
 | Privacy | No internet permission, no account, open source |
 | Tiny | APK < 200 KB, no background drain |
+| Focus session | "Focus now" 30 min / 1 h / 2 h closes every target, can't be ended early |
+| Glanceable home | Status card: protection on, minutes today, went back, streak, kind line |
 
 ## Phase 1 — Settings instead of fixed rules
 - `Config.java` (new): one JSON block per target in prefs `config`. Fields: `pause_s`,
@@ -145,3 +147,9 @@ keep-alive; without it, the app does it itself. No Gradle, no libraries, UI buil
   the pause screen. Builds OK in both flavors; installed on the emulator, service binds, widget
   provider registered, no crashes. Tile/widget not checked on screen (emulator shared with
   another project). Listing, data safety, owner decisions: `docs/play-store.md`.
+- Focus session + home card (2026-11-13): `Limits.focus_until` (pref) — `hardBlock` says
+  "focus session until HH:MM", `isUnlocked` is false during it (a running open ends). Start only
+  extends (max). Home hero card (`MainActivity.hero`, from `Setup.addStatus` when setup is done):
+  protection status, today's minutes / went back / streak, encouraging line, Focus now buttons with
+  a confirm dialog. Edit screen: matching preset highlighted (`PRESETS`, `presetMatch`), live
+  summary line. Bangla strings added.

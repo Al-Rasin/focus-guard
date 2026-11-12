@@ -252,6 +252,32 @@ final class L {
         add("Turning off: takes effect %s", "বন্ধ হচ্ছে: কার্যকর হবে %s");
         add("Shorter delay from %s", "কম দেরি শুরু %s");
 
+        // Home hero + focus session
+        add("Protection is on", "সুরক্ষা চালু");
+        add("Protection is on (root watchdog)", "সুরক্ষা চালু (রুট ওয়াচডগ)");
+        add("min today", "মিনিট আজ");
+        add("No short videos today. Keep it up.", "আজ কোনো ছোট ভিডিও নয়। এভাবেই চালিয়ে যান।");
+        add("You went back %s times today. Well done.", "আজ %s বার ফিরে গেছেন। দারুণ।");
+        add("%s days in a row without extending.", "টানা %s দিন বাড়ানো ছাড়া।");
+        add("Every pause is a choice. You are doing fine.", "প্রতিটি বিরতি একটি সিদ্ধান্ত। আপনি ভালো করছেন।");
+        add("Focus session until %s", "ফোকাস সেশন %s পর্যন্ত");
+        add("%s min left. Every target is closed.", "আর %s মিনিট। সব টার্গেট বন্ধ।");
+        add("Focus now", "এখন ফোকাস");
+        add("Close every target for a while. Can't be undone.", "কিছুক্ষণ সব টার্গেট বন্ধ রাখুন। ফেরানো যাবে না।");
+        add("30 min", "৩০ মিনিট");
+        add("1 hour", "১ ঘণ্টা");
+        add("2 hours", "২ ঘণ্টা");
+        add("Focus for %s?", "%s ফোকাস করবেন?");
+        add("Shorts, Reels and every app you added stay closed until %s. You can't end it early.",
+                "Shorts, Reels আর আপনার যোগ করা সব অ্যাপ %s পর্যন্ত বন্ধ থাকবে। আগে শেষ করা যাবে না।");
+        add("Start", "শুরু");
+        add("Cancel", "বাতিল");
+        add("focus session until %s", "ফোকাস সেশন %s পর্যন্ত");
+        add("%s s pause", "%s সেকেন্ড বিরতি");
+        add("%s opens/day", "দিনে %s বার");
+        add("%s min each", "প্রতিবার %s মিনিট");
+        add("no opens", "খোলা যাবে না");
+
         // Stats
         add("Today", "আজ");
         add("opens", "বার খোলা");

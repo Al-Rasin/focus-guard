@@ -80,9 +80,7 @@ final class Setup {
             return;
         }
         if (done(a)) {
-            TextView ok = Ui.left(a, "✓ Protection is on" + (rooted(a) ? " (root watchdog)" : ""), 15, Ui.GREEN);
-            ok.setPadding(0, 0, 0, Ui.dp(a, 4));
-            root.addView(ok);
+            if (a instanceof MainActivity) ((MainActivity) a).hero(root);
             privateDns(a, root);
             return;
         }
@@ -183,7 +181,7 @@ final class Setup {
         root.addView(box, lp);
     }
 
-    private static LinearLayout box(Activity a) {
+    static LinearLayout box(Activity a) {
         LinearLayout box = Ui.column(a);
         box.setBackground(Ui.round(a, Ui.CARD, 14));
         int pad = Ui.dp(a, 14);

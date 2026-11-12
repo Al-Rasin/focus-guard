@@ -106,6 +106,101 @@ public class MainActivity extends Activity {
         show(root);
     }
 
+    /** Top card on Home when setup is done: status, today at a glance, a kind line, Focus now. */
+    void hero(LinearLayout root) {
+        Limits limits = new Limits(this);
+        android.content.SharedPreferences p = getSharedPreferences("limits", MODE_PRIVATE);
+        Stats.Day t = Stats.day(p, Limits.day(Clock.now(this)));
+        int streak = Stats.streak(this, p);
+        LinearLayout box = Setup.box(this);
+
+        TextView status = Ui.left(this, Setup.rooted(this) ? "Protection is on (root watchdog)"
+                : "Protection is on", 13, Ui.GREEN);
+        status.setCompoundDrawablePadding(Ui.dp(this, 8));
+        status.setCompoundDrawablesRelative(dot(Ui.GREEN), null, null, null);
+        box.addView(status);
+        box.addView(Ui.space(this, 10));
+
+        LinearLayout nums = Ui.row(this);
+        nums.addView(heroNum(String.valueOf((t.seconds + 59) / 60), "min today"), Ui.grow());
+        nums.addView(heroNum(String.valueOf(t.skips), "went back"), Ui.grow());
+        nums.addView(heroNum(String.valueOf(streak), "day streak"), Ui.grow());
+        box.addView(nums, Ui.wide());
+        box.addView(Ui.space(this, 10));
+
+        String kind = t.opens == 0 ? "No short videos today. Keep it up."
+                : t.skips > 0 ? "You went back " + t.skips + " times today. Well done."
+                : streak > 1 ? streak + " days in a row without extending."
+                : "Every pause is a choice. You are doing fine.";
+        box.addView(Ui.left(this, kind, 14, Ui.MUTED));
+
+        View line = new View(this);
+        line.setBackgroundColor(Color.parseColor("#2B3544"));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
+                Ui.dp(this, 1));
+        lp.topMargin = lp.bottomMargin = Ui.dp(this, 12);
+        box.addView(line, lp);
+
+        if (limits.inFocus()) {
+            long left = (limits.focusUntil() - limits.now() + 59_999) / 60_000;
+            TextView f = Ui.left(this, "Focus session until " + Limits.hhmm(limits.focusUntil()), 16, Ui.SKY);
+            f.setTypeface(Typeface.DEFAULT_BOLD);
+            box.addView(f);
+            box.addView(Ui.left(this, left + " min left. Every target is closed.", 13, Ui.MUTED));
+        } else {
+            TextView f = Ui.left(this, "Focus now", 16, Ui.WHITE);
+            f.setTypeface(Typeface.DEFAULT_BOLD);
+            box.addView(f);
+            box.addView(Ui.left(this, "Close every target for a while. Can't be undone.", 13, Ui.MUTED));
+            box.addView(Ui.space(this, 8));
+            LinearLayout row = Ui.row(this);
+            int[] mins = {30, 60, 120};
+            String[] names = {"30 min", "1 hour", "2 hours"};
+            for (int i = 0; i < mins.length; i++) {
+                int m = mins[i];
+                String name = names[i];
+                Button b = Ui.button(this, name, "#16303F", Ui.SKY);
+                b.setTextSize(14);
+                b.setPadding(0, Ui.dp(this, 10), 0, Ui.dp(this, 10));
+                b.setOnClickListener(v -> new android.app.AlertDialog.Builder(this)
+                        .setTitle(L.t(this, "Focus for " + name + "?"))
+                        .setMessage(L.t(this, "Shorts, Reels and every app you added stay closed until "
+                                + Limits.hhmm(limits.now() + m * 60_000L) + ". You can't end it early."))
+                        .setPositiveButton(L.t(this, "Start"), (d, w) -> {
+                            limits.startFocus(m);
+                            home();
+                        })
+                        .setNegativeButton(L.t(this, "Cancel"), null).show());
+                LinearLayout.LayoutParams bl = Ui.grow();
+                if (i > 0) bl.leftMargin = Ui.dp(this, 8);
+                row.addView(b, bl);
+            }
+            box.addView(row, Ui.wide());
+        }
+        LinearLayout.LayoutParams bp = Ui.wide();
+        bp.bottomMargin = Ui.dp(this, 8);
+        root.addView(box, bp);
+    }
+
+    private LinearLayout heroNum(String big, String small) {
+        LinearLayout c = Ui.column(this);
+        TextView n = Ui.left(this, big, 28, Ui.WHITE);
+        n.setTypeface(Typeface.DEFAULT_BOLD);
+        c.addView(n);
+        c.addView(Ui.left(this, small, 12, Ui.MUTED));
+        return c;
+    }
+
+    private GradientDrawable dot(String color) {
+        GradientDrawable g = new GradientDrawable();
+        g.setShape(GradientDrawable.OVAL);
+        g.setColor(Color.parseColor(color));
+        int d = Ui.dp(this, 8);
+        g.setSize(d, d);
+        g.setBounds(0, 0, d, d);
+        return g;
+    }
+
     private void statsTab() {
         screen = "stats";
         LinearLayout root = page("Stats");
@@ -244,6 +339,7 @@ public class MainActivity extends Activity {
         root.addView(section("Presets"));
         LinearLayout presets = Ui.row(this);
         String[] names = {"Gentle", "Balanced", "Strict"};
+        Button[] pb = new Button[names.length];
         for (int i = 0; i < names.length; i++) {
             int which = i;
             Button b = Ui.small(this, names[i]);
@@ -255,10 +351,23 @@ public class MainActivity extends Activity {
             LinearLayout.LayoutParams lp = Ui.grow();
             if (i > 0) lp.leftMargin = Ui.dp(this, 8);
             presets.addView(b, lp);
+            pb[i] = b;
         }
         root.addView(presets, Ui.wide());
-        root.addView(Ui.space(this, 4));
+        root.addView(Ui.space(this, 6));
+        TextView summary = Ui.left(this, "", 14, Ui.SKY);
+        root.addView(summary);
         root.addView(Ui.left(this, "A preset fills in the numbers below. Nothing changes until you save.", 13, "#6B7280"));
+        // Highlight the preset that matches the numbers, and keep the one-line summary current.
+        editChanged = () -> {
+            int match = presetMatch(edit);
+            for (int i = 0; i < pb.length; i++) {
+                pb[i].setBackground(Ui.round(this, i == match ? Ui.SKY : Ui.CARD, 14));
+                pb[i].setTextColor(Color.parseColor(i == match ? Ui.BG : Ui.WHITE));
+            }
+            summary.setText(summary(edit));
+        };
+        editChanged.run();
 
         root.addView(section("Pause"));
         g = group(root);
@@ -322,14 +431,33 @@ public class MainActivity extends Activity {
     }
 
     /** 0 gentle, 1 balanced, 2 strict. Leaves on/off, mode, schedule and timer alone. */
+    /** Runs after any stepper/toggle change on the edit screen (preset highlight + summary). */
+    private Runnable editChanged;
+
+    /** Which preset the settings equal right now, or -1 (custom). */
+    static int presetMatch(Config c) {
+        int[] now = {c.pauseS, c.pauseStepS, c.opens, c.openMin, c.cooldownMin, c.extOpens, c.extMax,
+                c.askWhy ? 1 : 0};
+        for (int i = 0; i < PRESETS.length; i++) if (java.util.Arrays.equals(PRESETS[i], now)) return i;
+        return -1;
+    }
+
+    /** "10 s pause · 6 opens/day · 10 min each" in the app language. */
+    private String summary(Config c) {
+        String opens = c.opens == 0 ? L.t(this, "no opens") : L.t(this, c.opens + " opens/day");
+        return L.t(this, c.pauseS + " s pause") + " · " + opens
+                + (c.opens == 0 ? "" : " · " + L.t(this, c.openMin + " min each"));
+    }
+
+    /** Gentle, Balanced, Strict: pause, step, opens, min, cooldown, extOpens, extMax, askWhy. */
+    static final int[][] PRESETS = {
+            {5, 0, 10, 15, 0, 3, 2, 0},
+            {10, 5, 6, 10, 30, 3, 1, 0},
+            {30, 10, 3, 5, 60, 0, 0, 1},
+    };
+
     static void preset(Config c, int which) {
-        int[][] v = {
-                // pause, step, opens, min, cooldown, extOpens, extMax, askWhy
-                {5, 0, 10, 15, 0, 3, 2, 0},
-                {10, 5, 6, 10, 30, 3, 1, 0},
-                {30, 10, 3, 5, 60, 0, 0, 1},
-        };
-        int[] p = v[which];
+        int[] p = PRESETS[which];
         c.pauseS = p[0];
         c.pauseStepS = p[1];
         c.opens = p[2];
@@ -493,6 +621,7 @@ public class MainActivity extends Activity {
         Runnable paint = () -> {
             int v = get.getAsInt();
             value.setText(v == 0 && zero != null ? L.t(this, zero) : v + (unit.isEmpty() ? "" : " " + unit).replace(" :", ":"));
+            if (editChanged != null) editChanged.run();
         };
         paint.run();
         Button minus = Ui.small(this, "−"), plus = Ui.small(this, "+");
@@ -533,7 +662,10 @@ public class MainActivity extends Activity {
         s.setTextColor(Color.WHITE);
         s.setChecked(on);
         s.setPadding(0, Ui.dp(this, 8), 0, Ui.dp(this, 8));
-        s.setOnCheckedChangeListener((b, c) -> sink.set(c));
+        s.setOnCheckedChangeListener((b, c) -> {
+            sink.set(c);
+            if (editChanged != null) editChanged.run();
+        });
         return s;
     }
 

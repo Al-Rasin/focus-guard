@@ -32,6 +32,7 @@ cd android && FG_PLAY=1 FG_KEYSTORE=/path/upload.keystore FG_KS_PASS=... ./build
 > • Works in browsers too (Chrome, Brave, Firefox, Edge, Samsung Internet…)
 > • Adult websites blocked, always
 > • Strict mode: loosening a setting waits up to 72 h; optional partner PIN
+> • Focus now: close everything for 30 min, 1 or 2 hours — no way out early
 > • Stats, streaks, weekly report, home-screen widget and Quick Settings tile
 > • English and বাংলা
 >
@@ -51,6 +52,7 @@ cd android && FG_PLAY=1 FG_KEYSTORE=/path/upload.keystore FG_KS_PASS=... ./build
 | Pause | Breathing circle, rotating question, choose open length | Fixed pause |
 | Strict mode | Delayed loosening, PIN, weekly emergency open | Simple lock or none |
 | Glance | Widget + QS tile with health status | Rare |
+| Focus session | One tap closes all targets 30 min–2 h, can't end early | Often paid (Opal "deep focus") |
 | Language | English + Bangla | Rarely Bangla |
 
 Check rival claims again before using any of them in the listing (Play forbids false comparisons).
