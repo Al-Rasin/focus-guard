@@ -139,6 +139,9 @@ while true; do
     esac
     [ "$(settings get secure accessibility_enabled)" = 1 ] || settings put secure accessibility_enabled 1
 
+    # Tell the app a watchdog is here: it then skips the non-root setup steps and alerts.
+    [ -d "${BEAT%/*}" ] && touch "${BEAT%/*}/rooted"
+
     # 1a. Bound but wedged (seen on MIUI: a Short played with the pause long expired, fixed by a
     #     restart). The service touches files/heartbeat every 5 s; stale for 60 s with the
     #     screen on means it stopped working. Force-stop it; 1b below binds it again.

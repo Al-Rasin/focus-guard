@@ -104,6 +104,8 @@ public class GuardService extends AccessibilityService {
                 "status", "Opens left", NotificationManager.IMPORTANCE_LOW));
         nm.cancel(1); // older builds kept a permanent notification
         alive = new File(getFilesDir(), "heartbeat");
+        KeepAlive.cancel(this);
+        KeepAlive.schedule(this);
         refreshWatched();
         handler.removeCallbacks(heartbeat);
         heartbeat();
