@@ -96,6 +96,7 @@ public class GuardService extends AccessibilityService {
     @Override
     protected void onServiceConnected() {
         instance = this;
+        Health.changed(this);
         limits = new Limits(this);
         keywords = new Keywords(this);
         AdultDomains.load(this);
@@ -144,6 +145,7 @@ public class GuardService extends AccessibilityService {
         instance = null;
         handler.removeCallbacksAndMessages(null);
         if (timer != null) timer.hide();
+        Health.changed(this);
         return super.onUnbind(intent);
     }
 
@@ -269,7 +271,7 @@ public class GuardService extends AccessibilityService {
 
     /** Strict mode without root: keep the user off the screens that switch us off. */
     private boolean guardSettings() {
-        return Strict.on(this) && !Setup.rooted(this);
+        return !Flavor.PLAY && Strict.on(this) && !Setup.rooted(this);
     }
 
     private void scanSettings() {

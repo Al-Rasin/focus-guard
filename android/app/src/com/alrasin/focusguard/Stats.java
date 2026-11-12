@@ -117,6 +117,34 @@ final class Stats {
         return s;
     }
 
+    /**
+     * Weekly report text for the last 7 days (ending yesterday) compared with the 7 before, or null
+     * if already sent this week or there's no data. Neutral tone: facts, no scolding.
+     */
+    static String weekly(Context ctx) {
+        SharedPreferences p = ctx.getSharedPreferences("limits", Context.MODE_PRIVATE);
+        Calendar c = Clock.calendar(ctx);
+        String week = c.get(Calendar.YEAR) + "w" + c.get(Calendar.WEEK_OF_YEAR);
+        String sent = p.getString("weekly_sent", "");
+        if (week.equals(sent)) return null;
+        if (sent.isEmpty()) { // first run: start counting from next week, never report a partial week
+            p.edit().putString("weekly_sent", week).apply();
+            return null;
+        }
+        Day last = sum(ctx, p, 1, 7), before = sum(ctx, p, 8, 7);
+        p.edit().putString("weekly_sent", week).apply();
+        if (!last.any) return null;
+        int m = (last.seconds + 59) / 60, mb = (before.seconds + 59) / 60;
+        String s = "Last week: %s min, %s opens, went back %s times."
+                .replaceFirst("%s", String.valueOf(m))
+                .replaceFirst("%s", String.valueOf(last.opens))
+                .replaceFirst("%s", String.valueOf(last.skips));
+        String cmp = null;
+        if (before.any && mb > m) cmp = "%s min less than the week before.".replace("%s", String.valueOf(mb - m));
+        else if (before.any && m > mb) cmp = "%s min more than the week before.".replace("%s", String.valueOf(m - mb));
+        return cmp == null ? L.t(ctx, s) : L.t(ctx, s) + " " + L.t(ctx, cmp);
+    }
+
     private static String min(int seconds) {
         return (seconds + 59) / 60 + " min";
     }

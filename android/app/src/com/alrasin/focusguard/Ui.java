@@ -92,4 +92,23 @@ final class Ui {
     static int dp(Context c, int v) {
         return Math.round(v * c.getResources().getDisplayMetrics().density);
     }
+
+    /**
+     * Pad a screen's root by the system bars, cutout and keyboard. targetSdk 35+ draws apps
+     * edge-to-edge, and adjustResize no longer shrinks the window for the keyboard.
+     */
+    static void fitInsets(android.view.View v) {
+        v.setOnApplyWindowInsetsListener((view, in) -> {
+            if (android.os.Build.VERSION.SDK_INT >= 30) {
+                android.graphics.Insets i = in.getInsets(android.view.WindowInsets.Type.systemBars()
+                        | android.view.WindowInsets.Type.displayCutout()
+                        | android.view.WindowInsets.Type.ime());
+                view.setPadding(i.left, i.top, i.right, i.bottom);
+            } else {
+                view.setPadding(in.getSystemWindowInsetLeft(), in.getSystemWindowInsetTop(),
+                        in.getSystemWindowInsetRight(), in.getSystemWindowInsetBottom());
+            }
+            return in;
+        });
+    }
 }

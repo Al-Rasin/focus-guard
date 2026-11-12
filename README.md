@@ -25,7 +25,7 @@ on the Mac they are still fixed in `mac/extension/background.js`.
 Needs Android 8+. One APK works with or without root.
 
 ```sh
-cd android && ./build.sh        # needs Android SDK build-tools 35 + platform 34, no Gradle
+cd android && ./build.sh        # needs Android SDK build-tools 35 + platform 36, no Gradle
 ```
 
 ### Without root
@@ -54,6 +54,10 @@ Vivo, Huawei) and notifications. If Android stops the service, a "tap to fix" no
   (light / medium / strict) on each target. The pause screen shows a breathing circle with the countdown
   inside, how often you opened it today, and lets you pick how long to open it (e.g. 1 / 5 / 10 / 15 min).
   Stats include a minutes-per-day chart for the last 7 days.
+- **At a glance**: Quick Settings tile and home-screen widget show whether protection is running
+  ("Stopped – tap to fix" if not), opens left and today's minutes. A weekly report notification
+  compares last week with the week before. The pause screen asks a different question each time.
+- **Consent**: before any accessibility step the app explains what it reads and asks you to agree.
 
 ### With root (Magisk)
 
@@ -105,6 +109,9 @@ No network access, no analytics, no accounts. Everything stays on the device.
 Signing uses a local `focusguard.keystore` that `build.sh` generates on first run. It is not in this repo.
 For a release key set `FG_KEYSTORE=/path/to.keystore FG_KS_PASS=...` (alias `fg`). Keep the key:
 Android won't update an app signed with a different one.
+
+`FG_PLAY=1 ./build.sh` makes the Google Play build (no settings guard, which Play doesn't allow).
+See `docs/play-store.md` and `docs/privacy-policy.md`.
 
 ## License
 

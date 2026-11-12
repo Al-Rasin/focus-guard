@@ -205,25 +205,60 @@ final class Setup {
         box.addView(row);
     }
 
-    /** Required before asking for accessibility: what it reads and that nothing leaves the phone. */
+    static final String CONSENT_TEXT =
+            "Focus Guard uses Android's Accessibility service. Please read what it does before you agree.\n\n"
+            + "What it reads: which app is on screen; screen element names in YouTube, Facebook, Instagram and "
+            + "TikTok (to find Shorts and Reels); the web address in your browser; on-screen text in Telegram "
+            + "chats and searches; and, in strict mode, whether Focus Guard's own settings pages are open.\n\n"
+            + "Why: to show the pause screen before short videos, count opens and minutes, block adult websites "
+            + "and adult Telegram chats, and in strict mode stop quick switch-offs.\n\n"
+            + "What it does on screen: it can press Back or Home, or type google.com into the address bar, "
+            + "to leave a blocked page.\n\n"
+            + "What it never does: screen content is not saved, sent or shared. Only counts and settings are "
+            + "stored, on this phone. The app has no internet permission, no ads, no analytics, no account.";
+
+    /**
+     * Prominent disclosure + consent (Google Play accessibility policy): shown before any
+     * accessibility step, needs an explicit "Agree"; "No thanks" leaves the app inert.
+     */
     private static void disclosure(Activity a, LinearLayout root) {
+        SharedPreferences p = prefs(a);
         LinearLayout box = box(a);
-        TextView head = Ui.left(a, "Before you start", 17, Ui.WHITE);
-        head.setTypeface(Typeface.DEFAULT_BOLD);
-        box.addView(head);
-        box.addView(Ui.space(a, 6));
-        box.addView(Ui.left(a, "Focus Guard uses Android's Accessibility service to see which screen is open: "
-                + "the app, the browser address, and on-screen text in Telegram chats. It uses this only to "
-                + "show the pause screen, count opens and block adult content.\n\n"
-                + "Everything stays on this phone. The app has no internet permission, no ads and no analytics.",
-                14, Ui.MUTED));
-        box.addView(Ui.space(a, 12));
-        Button ok = Ui.button(a, "I understand", Ui.SKY, Ui.BG);
-        ok.setOnClickListener(v -> {
-            prefs(a).edit().putBoolean("disclosed", true).apply();
-            a.recreate();
-        });
-        box.addView(ok, Ui.wide());
+        if (p.getBoolean("declined", false)) {
+            TextView head = Ui.left(a, "Focus Guard is not active", 17, Ui.WHITE);
+            head.setTypeface(Typeface.DEFAULT_BOLD);
+            box.addView(head);
+            box.addView(Ui.space(a, 6));
+            box.addView(Ui.left(a, "You chose not to allow the Accessibility service. Without it Focus Guard "
+                    + "can't see Shorts, Reels or adult sites, so it does nothing.", 14, Ui.MUTED));
+            box.addView(Ui.space(a, 12));
+            Button again = Ui.button(a, "Read again", Ui.SKY, Ui.BG);
+            again.setOnClickListener(v -> {
+                p.edit().putBoolean("declined", false).apply();
+                a.recreate();
+            });
+            box.addView(again, Ui.wide());
+        } else {
+            TextView head = Ui.left(a, "Accessibility service: your consent", 17, Ui.WHITE);
+            head.setTypeface(Typeface.DEFAULT_BOLD);
+            box.addView(head);
+            box.addView(Ui.space(a, 6));
+            box.addView(Ui.left(a, CONSENT_TEXT, 14, Ui.MUTED));
+            box.addView(Ui.space(a, 12));
+            Button ok = Ui.button(a, "Agree", Ui.SKY, Ui.BG);
+            ok.setOnClickListener(v -> {
+                p.edit().putBoolean("disclosed", true).putBoolean("declined", false).apply();
+                a.recreate();
+            });
+            box.addView(ok, Ui.wide());
+            box.addView(Ui.space(a, 8));
+            Button no = Ui.button(a, "No thanks", Ui.CARD, Ui.WHITE);
+            no.setOnClickListener(v -> {
+                p.edit().putBoolean("declined", true).apply();
+                a.recreate();
+            });
+            box.addView(no, Ui.wide());
+        }
         LinearLayout.LayoutParams lp = Ui.wide();
         lp.bottomMargin = Ui.dp(a, 8);
         root.addView(box, lp);

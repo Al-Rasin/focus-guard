@@ -506,6 +506,10 @@ final class Strict {
             w.setTypeface(Typeface.DEFAULT_BOLD);
             root.addView(w);
         }
+        if (Flavor.PLAY) {
+            a.show(root);
+            return;
+        }
         root.addView(Ui.space(a, 12));
         root.addView(Ui.left(a, "In strict mode the screens that switch Focus Guard off (its accessibility "
                 + "page, App info, device admin, Private DNS) close as soon as they open.", 13, "#6B7280"));

@@ -106,6 +106,7 @@ final class Limits {
 
     void extend(String cat) {
         if (canExtend(cat)) prefs.edit().putInt(today() + "_ext_" + cat, extends_(cat) + 1).apply();
+        Widget.refresh(ctx);
     }
 
     boolean isUnlocked(String cat) {
@@ -176,6 +177,7 @@ final class Limits {
                 .putLong("last_" + cat, now)
                 .putInt("vid_now_" + cat, 0)
                 .apply();
+        Widget.refresh(ctx);
     }
 
     /** End the running open now (video limit reached, etc.). */

@@ -426,6 +426,7 @@ public class MainActivity extends Activity {
         sv.setBackgroundColor(Color.parseColor(Ui.BG));
         sv.addView(root);
         if (!isTab(screen)) {
+            Ui.fitInsets(sv);
             setContentView(sv);
             return;
         }
@@ -452,6 +453,7 @@ public class MainActivity extends Activity {
             bar.addView(b, Ui.grow());
         }
         frame.addView(bar, Ui.wide());
+        Ui.fitInsets(frame);
         setContentView(frame);
     }
 

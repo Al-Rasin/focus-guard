@@ -137,3 +137,11 @@ keep-alive; without it, the app does it itself. No Gradle, no libraries, UI buil
   countdown inside, open-length chips (1/5/10/15/30/60 min below the max, plus the max; open spends
   one open either way), "I don't want to open" as the main button. Stats: 7-bar minutes chart.
   Emulator-tested in Bangla: all tabs, edit, pause (chips enabled after the countdown), Go back.
+- Play readiness + competitor edge (2026-11-12): targetSdk 36 with edge-to-edge insets
+  (`Ui.fitInsets`), adaptive icon, consent screen before accessibility, `FG_PLAY=1` build without
+  the settings guard. New: Quick Settings tile (`Tile.java`) and home widget (`Widget.java`) with
+  health status (`Health.java`: accessibility on + service alive or heartbeat < 3 min), weekly
+  report notification (`Stats.weekly`, sent once per week from `KeepAlive`), rotating questions on
+  the pause screen. Builds OK in both flavors; installed on the emulator, service binds, widget
+  provider registered, no crashes. Tile/widget not checked on screen (emulator shared with
+  another project). Listing, data safety, owner decisions: `docs/play-store.md`.

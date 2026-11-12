@@ -145,6 +145,22 @@ final class L {
         add("Go back", "ফিরে যান");
         add("Take a breath. Do you really need this now?", "একটু শ্বাস নিন। এখন কি সত্যিই দরকার?");
         add("Or instead: %s", "বরং: %s");
+        add("What were you about to do before this?", "এর আগে আপনি কী করতে যাচ্ছিলেন?");
+        add("How do you want to feel in 15 minutes?", "১৫ মিনিট পর কেমন অনুভব করতে চান?");
+        add("Is this a choice, or a habit?", "এটা কি আপনার সিদ্ধান্ত, নাকি অভ্যাস?");
+        add("Are you bored, tired or avoiding something?", "আপনি কি বিরক্ত, ক্লান্ত, নাকি কিছু এড়িয়ে যাচ্ছেন?");
+        add("Will you remember this video tomorrow?", "কাল কি এই ভিডিওটা মনে থাকবে?");
+        add("What would make the next hour good?", "পরের এক ঘণ্টা ভালো কাটাতে কী করবেন?");
+
+        // Tile, widget, weekly report
+        add("Protected", "সুরক্ষিত");
+        add("Stopped – tap to fix", "বন্ধ – ঠিক করতে ট্যাপ করুন");
+        add("Today: %s min · went back %s times", "আজ: %s মিনিট · %s বার ফিরে গেছেন");
+        add("Weekly report", "সাপ্তাহিক রিপোর্ট");
+        add("Last week: %s min, %s opens, went back %s times.",
+                "গত সপ্তাহ: %s মিনিট, %s বার খোলা, %s বার ফিরে গেছেন।");
+        add("%s min less than the week before.", "আগের সপ্তাহের চেয়ে %s মিনিট কম।");
+        add("%s min more than the week before.", "আগের সপ্তাহের চেয়ে %s মিনিট বেশি।");
         add("Daily limit reached", "আজকের সীমা শেষ");
         add("Daily limit reached. Extensions left today: %s", "আজকের সীমা শেষ। আজ আর বাড়ানো যাবে: %s বার");
         add("Next open in %s min", "পরের বার খোলা যাবে %s মিনিট পর");
@@ -163,14 +179,24 @@ final class L {
 
         // Setup
         add("Before you start", "শুরু করার আগে");
-        add("Focus Guard uses Android's Accessibility service to see which screen is open: "
-                + "the app, the browser address, and on-screen text in Telegram chats. It uses this only to "
-                + "show the pause screen, count opens and block adult content.\n\n"
-                + "Everything stays on this phone. The app has no internet permission, no ads and no analytics.",
-                "Focus Guard অ্যান্ড্রয়েডের Accessibility সার্ভিস দিয়ে দেখে কোন স্ক্রিন খোলা: অ্যাপ, "
-                + "ব্রাউজারের ঠিকানা আর টেলিগ্রাম চ্যাটের লেখা। এটা শুধু বিরতির স্ক্রিন দেখাতে, খোলা গুনতে "
-                + "আর অ্যাডাল্ট কনটেন্ট ব্লক করতে ব্যবহার হয়।\n\n"
-                + "সবকিছু এই ফোনেই থাকে। অ্যাপের ইন্টারনেট পারমিশন নেই, বিজ্ঞাপন নেই, অ্যানালিটিক্স নেই।");
+        add(Setup.CONSENT_TEXT,
+                "Focus Guard অ্যান্ড্রয়েডের Accessibility সার্ভিস ব্যবহার করে। রাজি হওয়ার আগে এটা কী করে পড়ে নিন।\n\n"
+                + "কী পড়ে: স্ক্রিনে কোন অ্যাপ খোলা; ইউটিউব, ফেসবুক, ইনস্টাগ্রাম ও টিকটকের স্ক্রিন-উপাদানের নাম "
+                + "(শর্টস ও রিলস চিনতে); ব্রাউজারের ওয়েব ঠিকানা; টেলিগ্রাম চ্যাট ও সার্চের লেখা; আর স্ট্রিক্ট মোডে "
+                + "Focus Guard-এর নিজের সেটিংস পেজ খোলা কি না।\n\n"
+                + "কেন: ছোট ভিডিওর আগে বিরতির স্ক্রিন দেখাতে, খোলা ও মিনিট গুনতে, অ্যাডাল্ট ওয়েবসাইট ও অ্যাডাল্ট "
+                + "টেলিগ্রাম চ্যাট ব্লক করতে, আর স্ট্রিক্ট মোডে হুট করে বন্ধ করা ঠেকাতে।\n\n"
+                + "স্ক্রিনে কী করে: ব্লক করা পেজ থেকে বের হতে Back বা Home চাপতে পারে, বা ঠিকানার ঘরে google.com লিখতে পারে।\n\n"
+                + "কখনো যা করে না: স্ক্রিনের লেখা সেভ, পাঠানো বা শেয়ার হয় না। শুধু গোনা আর সেটিংস এই ফোনে থাকে। "
+                + "অ্যাপের ইন্টারনেট পারমিশন নেই, বিজ্ঞাপন নেই, অ্যানালিটিক্স নেই, অ্যাকাউন্ট নেই।");
+        add("Accessibility service: your consent", "Accessibility সার্ভিস: আপনার সম্মতি");
+        add("Agree", "রাজি");
+        add("Focus Guard is not active", "Focus Guard চালু নেই");
+        add("You chose not to allow the Accessibility service. Without it Focus Guard "
+                + "can't see Shorts, Reels or adult sites, so it does nothing.",
+                "আপনি Accessibility সার্ভিসের অনুমতি দেননি। এটা ছাড়া Focus Guard শর্টস, রিলস বা অ্যাডাল্ট সাইট "
+                + "দেখতে পায় না, তাই কিছুই করে না।");
+        add("Read again", "আবার পড়ুন");
         add("I understand", "বুঝেছি");
         add("Finish setup", "সেটআপ শেষ করুন");
         add("Android stops apps it thinks are idle. Each step keeps Focus Guard running.",

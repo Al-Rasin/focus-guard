@@ -33,6 +33,16 @@ import java.util.Random;
  */
 public class PauseActivity extends Activity {
     private static final int[] CHOICES_MIN = {1, 5, 10, 15, 30, 60};
+    /** Rotated one per pause, so the screen doesn't turn into wallpaper the eye skips. */
+    private static final String[] QUESTIONS = {
+            "Take a breath. Do you really need this now?",
+            "What were you about to do before this?",
+            "How do you want to feel in 15 minutes?",
+            "Is this a choice, or a habit?",
+            "Are you bored, tired or avoiding something?",
+            "Will you remember this video tomorrow?",
+            "What would make the next hour good?",
+    };
 
     private String cat, pkg;
     private CountDownTimer timer;
@@ -99,7 +109,7 @@ public class PauseActivity extends Activity {
         }
 
         root.addView(Ui.space(this, 20));
-        root.addView(Ui.text(this, "Take a breath. Do you really need this now?", 17, Ui.MUTED));
+        root.addView(Ui.text(this, question(), 17, Ui.MUTED));
         root.addView(Ui.space(this, 20));
 
         // Breathing circle with the countdown inside.
@@ -286,7 +296,15 @@ public class PauseActivity extends Activity {
         sv.setBackgroundColor(Color.parseColor(Ui.BG));
         sv.addView(root, new ScrollView.LayoutParams(ScrollView.LayoutParams.MATCH_PARENT,
                 ScrollView.LayoutParams.MATCH_PARENT));
+        Ui.fitInsets(sv);
         setContentView(sv);
+    }
+
+    private String question() {
+        android.content.SharedPreferences p = getSharedPreferences("limits", MODE_PRIVATE);
+        int i = p.getInt("question", 0);
+        p.edit().putInt("question", (i + 1) % QUESTIONS.length).apply();
+        return QUESTIONS[i % QUESTIONS.length];
     }
 
     /** One of the user's own alternatives, or null if none set. */

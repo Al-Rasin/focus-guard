@@ -24,7 +24,7 @@ import java.io.File;
  * module's watchdog for this and skip the notice.
  */
 public class KeepAlive extends JobService {
-    private static final int JOB = 1, NOTE = 2;
+    private static final int JOB = 1, NOTE = 2, REPORT = 3;
     private static final long STALE_MS = 3 * 60_000L;
 
     static void schedule(Context c) {
@@ -49,7 +49,9 @@ public class KeepAlive extends JobService {
 
     static void check(Context c) {
         Strict.applyDue(c);
+        Health.changed(c);
         NotificationManager nm = c.getSystemService(NotificationManager.class);
+        report(c, nm);
         if (Setup.rooted(c)) {
             nm.cancel(NOTE);
             return;
@@ -76,6 +78,25 @@ public class KeepAlive extends JobService {
                 .setContentText(L.t(c, on ? "Android stopped it. Tap to fix." : "Tap to turn it back on."))
                 .setContentIntent(pi)
                 .setOngoing(true)
+                .build());
+    }
+
+    /** Once a week: a quiet summary of last week (time, opens, times the user went back). */
+    private static void report(Context c, NotificationManager nm) {
+        String text = Stats.weekly(c);
+        if (text == null) return;
+        nm.createNotificationChannel(new NotificationChannel(
+                "report", L.t(c, "Weekly report"), NotificationManager.IMPORTANCE_LOW));
+        Intent open = new Intent(c, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        PendingIntent pi = PendingIntent.getActivity(c, 3, open,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        nm.notify(REPORT, new Notification.Builder(c, "report")
+                .setSmallIcon(android.R.drawable.ic_menu_recent_history)
+                .setContentTitle(L.t(c, "Weekly report"))
+                .setContentText(text)
+                .setStyle(new Notification.BigTextStyle().bigText(text))
+                .setContentIntent(pi)
+                .setAutoCancel(true)
                 .build());
     }
 
