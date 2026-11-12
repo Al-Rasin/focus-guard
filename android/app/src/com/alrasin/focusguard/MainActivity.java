@@ -42,7 +42,20 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        Strict.applyDue(this);
         if (screen.equals("home")) home();
+    }
+
+    /** Re-render the current screen (after a strict-mode change). */
+    void refresh() {
+        if (screen.equals("strict")) strict();
+        else if (screen.startsWith("edit:")) edit(screen.substring(5));
+        else home();
+    }
+
+    void strict() {
+        screen = "strict";
+        Strict.screen(this);
     }
 
     @Override

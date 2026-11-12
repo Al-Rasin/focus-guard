@@ -48,6 +48,7 @@ public class KeepAlive extends JobService {
     }
 
     static void check(Context c) {
+        Strict.applyDue(c);
         NotificationManager nm = c.getSystemService(NotificationManager.class);
         if (Setup.rooted(c)) {
             nm.cancel(NOTE);

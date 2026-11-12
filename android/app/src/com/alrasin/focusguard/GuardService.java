@@ -133,6 +133,7 @@ public class GuardService extends AccessibilityService {
             } catch (java.io.IOException ignored) {
             }
         }
+        Strict.applyDue(this);
         refreshWatched();
         if (on) queueScan();
         handler.postDelayed(heartbeat, HEARTBEAT_MS);
@@ -172,6 +173,7 @@ public class GuardService extends AccessibilityService {
         w.add(YOUTUBE);
         w.addAll(FACEBOOK);
         for (String cat : Targets.all(this)) w.addAll(Targets.packages(cat));
+        if (guardSettings()) w.addAll(Strict.SETTINGS);
         watched = w;
     }
 
@@ -253,12 +255,50 @@ public class GuardService extends AccessibilityService {
             scanTelegram();
             return;
         }
+        if (Strict.SETTINGS.contains(pkg)) {
+            if (guardSettings()) scanSettings();
+            return;
+        }
         String what = detect(pkg);
         trace("scan " + pkg + " -> " + what);
         if (what == null || what.equals(ADULT)) timer.hide();
         if (what == null) return;
         if (what.equals(ADULT)) leave(pkg, "Adult site blocked");
         else gate(what, pkg);
+    }
+
+    /** Strict mode without root: keep the user off the screens that switch us off. */
+    private boolean guardSettings() {
+        return Strict.on(this) && !Setup.rooted(this);
+    }
+
+    private void scanSettings() {
+        AccessibilityNodeInfo root = appRoot();
+        if (root == null) return;
+        StringBuilder sb = new StringBuilder();
+        allText(root, sb, 0);
+        root.recycle();
+        if (!Strict.blocks(this, sb.toString())) return;
+        long now = SystemClock.elapsedRealtime();
+        if (now - lastKickAt < 1500) return;
+        lastKickAt = now;
+        trace("strict: settings screen closed");
+        performGlobalAction(GLOBAL_ACTION_HOME);
+        handler.post(() -> android.widget.Toast.makeText(this,
+                "Strict mode is on. Changes to Focus Guard wait " + Strict.delayH(this) + " h.",
+                android.widget.Toast.LENGTH_LONG).show());
+    }
+
+    private void allText(AccessibilityNodeInfo n, StringBuilder out, int depth) {
+        if (n == null || depth > 40 || out.length() > 20000) return;
+        if (n.getText() != null) out.append(n.getText()).append('\n');
+        if (n.getContentDescription() != null) out.append(n.getContentDescription()).append('\n');
+        for (int i = 0; i < n.getChildCount(); i++) {
+            AccessibilityNodeInfo c = n.getChild(i);
+            if (c == null) continue;
+            allText(c, out, depth + 1);
+            c.recycle();
+        }
     }
 
     private boolean blind() {

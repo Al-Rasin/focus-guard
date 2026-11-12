@@ -250,6 +250,7 @@ final class Setup {
     }
 
     static boolean open(Context c, Intent i) {
+        Strict.grace();
         try {
             c.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             return true;
