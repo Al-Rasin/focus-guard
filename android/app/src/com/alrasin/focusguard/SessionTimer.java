@@ -37,8 +37,8 @@ final class SessionTimer {
     private TextView time, label;
     private GradientDrawable bg;
     private ObjectAnimator pulse;
-    private boolean warned;
-    private String cat, pkg;
+    private boolean warned, running;
+    private String cat, pkg, why = "";
     private final Runnable tick = this::tick;
 
     SessionTimer(GuardService service, Handler handler, Limits limits) {
@@ -48,10 +48,20 @@ final class SessionTimer {
         pos = service.getSharedPreferences("timer", Context.MODE_PRIVATE);
     }
 
+    String cat() {
+        return cat;
+    }
+
     void show(String cat, String pkg) {
         this.cat = cat;
         this.pkg = pkg;
-        if (view == null && !create()) return;
+        Config c = limits.config(cat);
+        why = c.askWhy ? limits.why(cat) : "";
+        // With the tab turned off, still tick (daily time cap, expiry re-check), just invisibly.
+        if (c.timer && view == null) create();
+        if (!c.timer && view != null) removeView();
+        if (view != null) label.setText(normalLabel());
+        running = true;
         handler.removeCallbacks(tick);
         tick();
     }
@@ -64,7 +74,8 @@ final class SessionTimer {
         time.setTypeface(Typeface.DEFAULT_BOLD);
         time.setGravity(Gravity.CENTER);
         label = new TextView(service);
-        label.setText("left");
+        label.setText(normalLabel());
+        label.setMaxWidth(110 * dp);
         label.setTextSize(11);
         label.setGravity(Gravity.CENTER);
 
@@ -147,8 +158,17 @@ final class SessionTimer {
         return Math.max(min, Math.min(max, v));
     }
 
+    boolean running() {
+        return running;
+    }
+
     void hide() {
+        running = false;
         handler.removeCallbacks(tick);
+        removeView();
+    }
+
+    private void removeView() {
         if (pulse != null) pulse.cancel();
         pulse = null;
         if (view == null) return;
@@ -160,8 +180,8 @@ final class SessionTimer {
     }
 
     private void tick() {
-        if (view == null) return;
-        long left = limits.unlockedUntil(cat) - System.currentTimeMillis();
+        if (!running) return;
+        long left = limits.unlockedUntil(cat) - limits.now();
         if (left <= 0) {
             hide();
             service.recheck(); // window ran out on screen: pause again
@@ -171,10 +191,18 @@ final class SessionTimer {
             hide();
             return;
         }
+        limits.addSeconds(cat, 1);
+        handler.postDelayed(tick, 1000);
+        if (view == null) return;
         long s = (left + 999) / 1000;
         time.setText(String.format(Locale.US, "%d:%02d", s / 60, s % 60));
         style(left <= WARN_MS);
-        handler.postDelayed(tick, 1000);
+    }
+
+    /** "left", or the user's own reason for this open (intention reminder). */
+    private String normalLabel() {
+        if (why.isEmpty()) return "left";
+        return why.length() > 14 ? why.substring(0, 13) + "…" : why;
     }
 
     /** Normal: dark tab, sky-blue border and time. Last minute: red tab, pulsing. */
@@ -185,7 +213,7 @@ final class SessionTimer {
         bg.setStroke(Math.round(2 * service.getResources().getDisplayMetrics().density), warn ? WARN : ACCENT);
         time.setTextColor(warn ? WARN_TEXT : ACCENT);
         label.setTextColor(warn ? WARN_TEXT : MUTED);
-        label.setText(warn ? "last min" : "left");
+        label.setText(warn ? "last min" : normalLabel());
         if (warn) {
             pulse = ObjectAnimator.ofFloat(view, "alpha", 1f, 0.55f);
             pulse.setDuration(600);

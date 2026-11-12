@@ -46,7 +46,16 @@ public class GuardService extends AccessibilityService {
             ":id/reel_watch_player", ":id/reel_watch_fragment_root", ":id/reel_recycler",
             ":id/reel_player_page_container"};
 
+    /** Instagram Reels viewer. Not verified on a device yet: calibrate with uiautomator dump. */
+    private static final String[] INSTA_REELS_IDS = {
+            ":id/clips_viewer_view_pager", ":id/clips_viewer_container", ":id/clips_video_container",
+            ":id/clips_root_layout"};
+
     private static final Pattern SHORTS_URL = Pattern.compile("youtube\\.com/shorts");
+    private static final Pattern YOUTUBE_SITE = Pattern.compile("^(https?://)?([a-z0-9-]+\\.)*youtube\\.com(?![a-z0-9.-])|youtu\\.be/");
+    private static final Pattern INSTA_REELS_URL = Pattern.compile("instagram\\.com/(reels?|stories)\\b");
+    private static final Pattern INSTA_SITE = Pattern.compile("^(https?://)?([a-z0-9-]+\\.)*instagram\\.com(?![a-z0-9.-])");
+    private static final Pattern TIKTOK_SITE = Pattern.compile("^(https?://)?([a-z0-9-]+\\.)*tiktok\\.com(?![a-z0-9.-])");
     private static final Pattern REELS_URL = Pattern.compile(
             "facebook\\.com/(reel|reels|watch/reels)\\b|fb\\.watch/|facebook\\.com/share/r/");
     // facebook.com in a browser is its own category (Limits.FACEBOOK), except Messages and what logging in/opening links needs.
@@ -72,6 +81,9 @@ public class GuardService extends AccessibilityService {
     private final Runnable rescan = this::queueScan;
     private final Runnable heartbeat = this::heartbeat;
     private File alive;
+    /** Packages worth scanning (targets + browsers + Telegram), refreshed on each heartbeat. */
+    private Set<String> watched = new HashSet<>();
+    private long lastVideoAt;
     private String lastTrace;
 
     /** Decision log (`adb logcat -s FocusGuard`), only when it changes. */
@@ -92,6 +104,7 @@ public class GuardService extends AccessibilityService {
                 "status", "Opens left", NotificationManager.IMPORTANCE_LOW));
         nm.cancel(1); // older builds kept a permanent notification
         alive = new File(getFilesDir(), "heartbeat");
+        refreshWatched();
         handler.removeCallbacks(heartbeat);
         heartbeat();
     }
@@ -117,6 +130,7 @@ public class GuardService extends AccessibilityService {
             } catch (java.io.IOException ignored) {
             }
         }
+        refreshWatched();
         if (on) queueScan();
         handler.postDelayed(heartbeat, HEARTBEAT_MS);
     }
@@ -143,10 +157,44 @@ public class GuardService extends AccessibilityService {
             stepAside(pkg);
             return;
         }
-        if (TELEGRAM.contains(pkg) || pkg.equals(YOUTUBE) || FACEBOOK.contains(pkg)
-                || BROWSERS.contains(pkg)) {
+        if (watched.contains(pkg)) {
+            if (event.getEventType() == AccessibilityEvent.TYPE_VIEW_SCROLLED) countVideo(pkg);
             queueScan();
         }
+    }
+
+    private void refreshWatched() {
+        Set<String> w = new HashSet<>(TELEGRAM);
+        w.addAll(BROWSERS);
+        w.add(YOUTUBE);
+        w.addAll(FACEBOOK);
+        for (String cat : Targets.all(this)) w.addAll(Targets.packages(cat));
+        watched = w;
+    }
+
+    /**
+     * Video limit inside an open: a scroll in a short-video feed = next video (1 s debounce,
+     * a swipe sends a burst). At the limit the open ends and the pause comes back.
+     */
+    private void countVideo(String pkg) {
+        String cat = timer == null ? null : timer.cat();
+        if (cat == null || !timer.running() || !Targets.packages(cat).contains(pkg)) return;
+        Config c = limits.config(cat);
+        if (c.maxVideos <= 0 || wholeMode(cat)) return;
+        long now = SystemClock.elapsedRealtime();
+        if (now - lastVideoAt < 1000) return;
+        lastVideoAt = now;
+        limits.addVideo(cat);
+        if (limits.videosNow(cat) >= c.maxVideos) {
+            trace("video limit " + cat);
+            limits.endOpen(cat);
+            Toast.makeText(this, c.maxVideos + " videos watched, open ended", Toast.LENGTH_SHORT).show();
+            queueScan();
+        }
+    }
+
+    private boolean wholeMode(String cat) {
+        return Targets.wholeOnly(cat) || "whole".equals(limits.config(cat).mode);
     }
 
     /**
@@ -226,12 +274,24 @@ public class GuardService extends AccessibilityService {
         return pkg;
     }
 
-    /** What on screen needs blocking: Limits.SHORTS, Limits.REELS, Limits.FACEBOOK, ADULT, or null. */
+    /** What on screen needs blocking: a target category (only if enabled), ADULT, or null. */
     private String detect(String pkg) {
+        String what = detectRaw(pkg);
+        if (what == null || what.equals(ADULT)) return what;
+        return limits.config(what).enabled ? what : null;
+    }
+
+    private String detectRaw(String pkg) {
+        // Whole-app targets first: any screen of the app counts.
+        for (String cat : Targets.all(this)) {
+            if (Targets.packages(cat).contains(pkg) && wholeMode(cat) && limits.config(cat).enabled) return cat;
+        }
         if (pkg.equals(YOUTUBE)) {
             if (hasVisibleId(pkg, SHORTS_IDS)) return Limits.SHORTS;
         } else if (FACEBOOK.contains(pkg)) {
             if (facebookReelsVisible()) return Limits.REELS;
+        } else if (Targets.INSTAGRAM.contains(pkg)) {
+            if (hasVisibleId(pkg, INSTA_REELS_IDS)) return Limits.INSTAGRAM;
         } else if (BROWSERS.contains(pkg)) {
             AccessibilityNodeInfo bar = urlBar(pkg);
             if (bar != null) {
@@ -240,6 +300,12 @@ public class GuardService extends AccessibilityService {
                 bar.recycle();
                 if (SHORTS_URL.matcher(url).find()) return Limits.SHORTS;
                 if (REELS_URL.matcher(url).find()) return Limits.REELS;
+                if (INSTA_REELS_URL.matcher(url).find()) return Limits.INSTAGRAM;
+                if (!typing && TIKTOK_SITE.matcher(url).find()) return Limits.TIKTOK;
+                if (!typing && YOUTUBE_SITE.matcher(url).find() && "whole".equals(limits.config(Limits.SHORTS).mode))
+                    return Limits.SHORTS;
+                if (!typing && INSTA_SITE.matcher(url).find() && "whole".equals(limits.config(Limits.INSTAGRAM).mode))
+                    return Limits.INSTAGRAM;
                 if (!typing && FACEBOOK_SITE.matcher(url).find() && !FACEBOOK_OK.matcher(url).find()) {
                     return Limits.FACEBOOK;
                 }
@@ -258,8 +324,19 @@ public class GuardService extends AccessibilityService {
         }
         timer.hide();
         long now = SystemClock.elapsedRealtime();
+        String label = Limits.label(this, cat);
+        String blocked = limits.hardBlock(cat);
+        if (blocked != null) {
+            leave(pkg, label + ": " + blocked);
+            return;
+        }
+        int cooldown = limits.cooldownLeftMin(cat);
+        if (cooldown > 0) {
+            leave(pkg, label + ": next open in " + cooldown + " min");
+            return;
+        }
         if (limits.left(cat) == 0 && !limits.canExtend(cat)) {
-            leave(pkg, Limits.label(cat) + ": daily limit reached");
+            leave(pkg, label + ": daily limit reached");
             return;
         }
         long wait = 3000 - (now - lastPauseAt);
@@ -303,11 +380,14 @@ public class GuardService extends AccessibilityService {
             handler.postDelayed(() -> escapeStep(pkg, step, waits + 1), 200);
             return;
         }
-        if (!pkg.equals(cur) || detect(pkg) == null) {
+        String what = pkg.equals(cur) ? detect(pkg) : null;
+        if (what == null) {
             escaping = false;
             return;
         }
-        if (step >= ESCAPE_STEPS) {
+        // A whole-app target has no safe screen inside the app: go Home (browsers still get a safe page).
+        boolean wholeApp = !what.equals(ADULT) && wholeMode(what) && !BROWSERS.contains(pkg);
+        if (step >= ESCAPE_STEPS || wholeApp) {
             performGlobalAction(GLOBAL_ACTION_HOME);
             escaping = false;
             return;
@@ -516,7 +596,7 @@ public class GuardService extends AccessibilityService {
     void showOpensLeft(String cat) {
         Notification n = new Notification.Builder(this, "status")
                 .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
-                .setContentTitle(Limits.label(cat) + ": " + limits.left(cat) + " of "
+                .setContentTitle(Limits.label(this, cat) + ": " + limits.left(cat) + " of "
                         + limits.total(cat) + " opens left today")
                 .setContentText(limits.summary())
                 .setTimeoutAfter(10_000)
