@@ -101,7 +101,7 @@ keep-alive; without it, the app does it itself. No Gradle, no libraries, UI buil
 1 → 2 → 5 first (settings, staying alive, adult blocking), then 3, 4, 6, 7, 8.
 
 ## Progress
-- Done (code, not device-tested): 1, 2, 5, 3, 4, 6.
+- Done (code, not device-tested): 1, 2, 5, 3, 4, 6, 7 (no rename).
 - Phase 3: Instagram Reels ids need calibration with `uiautomator dump` on a device.
 - Phase 4 as built: `Strict.java` (prefs `strict`: pending `p_<cat>`, `rm_<pkg>`, `delay_at`,
   `off_at`; delay 1/6/24/72 h; salted SHA-256 PIN; emergency open once per 7 days after 60 s),
@@ -111,3 +111,6 @@ keep-alive; without it, the app does it itself. No Gradle, no libraries, UI buil
 - Phase 6 as built: `Stats.java` on the home screen — today tiles (opens, went back, minutes,
   streak), last 7 days line with change vs the week before, per-day list. Streak = days in a row
   without an extension. Day keys older than 60 days pruned once a day (`pruned` key).
+- Phase 7 as built: targetSdk 34, `<queries>` for launcher apps (app picker), POST_NOTIFICATIONS
+  asked once at runtime (then settings). Package rename skipped (no new name yet). Release
+  signing via `FG_KEYSTORE` / `FG_KS_PASS`. README covers the non-root app; no LICENSE yet.

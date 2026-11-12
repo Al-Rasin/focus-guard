@@ -125,9 +125,16 @@ final class Setup {
                 });
             }
         }
-        step(a, box, "Notifications allowed", notificationsOk(a), "Allow", () -> open(a,
-                new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                        .putExtra(Settings.EXTRA_APP_PACKAGE, a.getPackageName())));
+        step(a, box, "Notifications allowed", notificationsOk(a), "Allow", () -> {
+            // Android 13+: ask once with the system dialog; after a "Don't allow" only settings work.
+            if (Build.VERSION.SDK_INT >= 33 && !prefs(a).getBoolean("notif_asked", false)) {
+                prefs(a).edit().putBoolean("notif_asked", true).apply();
+                a.requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 1);
+            } else {
+                open(a, new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        .putExtra(Settings.EXTRA_APP_PACKAGE, a.getPackageName()));
+            }
+        });
         LinearLayout.LayoutParams lp = Ui.wide();
         lp.bottomMargin = Ui.dp(a, 8);
         root.addView(box, lp);

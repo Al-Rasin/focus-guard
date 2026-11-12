@@ -20,10 +20,16 @@ $BT/d8 --min-api 26 --lib $JAR --output $OUT $(find $OUT/classes -name '*.class'
 (cd $OUT && zip -q base.apk classes.dex)
 
 $BT/zipalign -f 4 $OUT/base.apk $OUT/aligned.apk
-[ -f focusguard.keystore ] || keytool -genkeypair -keystore focusguard.keystore -alias fg \
-    -keyalg RSA -keysize 2048 -validity 10000 -storepass focusguard -keypass focusguard \
-    -dname "CN=Focus Guard" >/dev/null 2>&1
-$BT/apksigner sign --ks focusguard.keystore --ks-pass pass:focusguard --out FocusGuard.apk $OUT/aligned.apk
+# Signing: release builds set FG_KEYSTORE + FG_KS_PASS (env). Otherwise a local key is made once.
+# Keep using the same key: Android refuses an update signed with a different one.
+KS=${FG_KEYSTORE:-focusguard.keystore}
+export KSPASS=${FG_KS_PASS:-focusguard}
+if [ ! -f "$KS" ]; then
+    [ -n "${FG_KEYSTORE:-}" ] && { echo "Keystore $KS not found" >&2; exit 1; }
+    keytool -genkeypair -keystore "$KS" -alias fg -keyalg RSA -keysize 2048 -validity 10000 \
+        -storepass "$KSPASS" -keypass "$KSPASS" -dname "CN=Focus Guard" >/dev/null 2>&1
+fi
+$BT/apksigner sign --ks "$KS" --ks-pass env:KSPASS --out FocusGuard.apk $OUT/aligned.apk
 echo "Built $(pwd)/FocusGuard.apk"
 
 # Flashable Magisk module: watchdog + bundled APK, versions taken from the manifest.

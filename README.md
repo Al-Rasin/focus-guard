@@ -1,6 +1,6 @@
 # Focus Guard
 
-A self-control tool for **rooted Android phones (Magisk)** and **macOS (Chrome / Brave)**.
+A self-control tool for **Android** (any phone; extra protection with root/Magisk) and **macOS (Chrome / Brave)**.
 It adds friction to short-form video and blocks adult content. It is hard to switch off on a weak moment.
 
 ## What it does
@@ -17,15 +17,39 @@ It adds friction to short-form video and blocks adult content. It is hard to swi
 - **Banking apps that reject accessibility services** (Android, currently bKash): Focus Guard
   turns itself off while the app is open and the watchdog turns it back on ~2 s after you leave.
 
-The limits above are currently fixed in code (`Limits.java`, `mac/extension/background.js`).
+These are the defaults. On Android every target has its own settings in the app (see below);
+on the Mac they are still fixed in `mac/extension/background.js`.
 
 ## Android
 
-Needs: a rooted phone with Magisk, Android 8+. Works with AdAway's systemless hosts module if present.
+Needs Android 8+. One APK works with or without root.
 
 ```sh
 cd android && ./build.sh        # needs Android SDK build-tools 35 + platform 34, no Gradle
 ```
+
+### Without root
+
+Install `android/FocusGuard.apk` and open it. A setup checklist walks through accessibility
+(Android 13+: App info → ⋮ → "Allow restricted settings" first), battery, autostart (MIUI, Samsung, Oppo,
+Vivo, Huawei) and notifications. If Android stops the service, a "tap to fix" notification appears.
+
+- **Targets**: YouTube Shorts, Facebook Reels, facebook.com, Instagram Reels, TikTok, or any app (whole app).
+- **Per-target settings**: pause length (and growing pause), opens per day, minutes per open, daily time cap,
+  cooldown between opens, max videos per open, extend rules, block hours, "why are you opening?" prompt,
+  your own "do this instead" list on the pause screen.
+- **Adult sites**: browser URLs are checked against the bundled domain list. Optional filtering
+  Private DNS (guided setup). Always on, no switch.
+- **Strict mode**: loosening a setting (or turning strict mode off) waits 1–72 h, tightening applies at once.
+  Optional partner PIN, one emergency open per week behind a 60 s wait, device admin against uninstall,
+  and a settings guard that closes our accessibility / app info / device admin pages.
+  Can't stop: safe-mode boot, factory reset, the accessibility volume-key shortcut (the app warns about it).
+- **Stats**: today's opens, times you went back, minutes, streak; last 7 days vs the week before.
+  Stored on the phone only, kept 60 days.
+
+### With root (Magisk)
+
+Works with AdAway's systemless hosts module if present.
 
 Flash `android/FocusGuard-module.zip` in Magisk and reboot. The module installs the app and a watchdog that,
 every 30 s, keeps the accessibility service on and bound, reinstalls the app if removed, keeps the hosts block
@@ -67,3 +91,9 @@ No network access, no analytics, no accounts. Everything stays on the device.
 ## Building your own
 
 Signing uses a local `focusguard.keystore` that `build.sh` generates on first run. It is not in this repo.
+For a release key set `FG_KEYSTORE=/path/to.keystore FG_KS_PASS=...` (alias `fg`). Keep the key:
+Android won't update an app signed with a different one.
+
+## License
+
+None yet: all rights reserved by the author until a license is added.
