@@ -10,8 +10,10 @@ OUT=build
 rm -rf $OUT && mkdir -p $OUT/classes $OUT/res
 
 $BT/aapt2 compile --dir app/res -o $OUT/res.zip
+# Assets: app/assets plus the adult domain list (URL check on phones without root).
+cp -R app/assets $OUT/assets && cp magisk/adult_hosts $OUT/assets/
 $BT/aapt2 link -o $OUT/base.apk -I $JAR --manifest app/AndroidManifest.xml \
-    -A app/assets $OUT/res.zip
+    -A $OUT/assets $OUT/res.zip
 
 javac --release 11 -nowarn -cp $JAR -d $OUT/classes $(find app/src -name '*.java')
 $BT/d8 --min-api 26 --lib $JAR --output $OUT $(find $OUT/classes -name '*.class')

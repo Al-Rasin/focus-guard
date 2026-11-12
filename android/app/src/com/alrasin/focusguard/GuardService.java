@@ -98,6 +98,7 @@ public class GuardService extends AccessibilityService {
         instance = this;
         limits = new Limits(this);
         keywords = new Keywords(this);
+        AdultDomains.load(this);
         timer = new SessionTimer(this, handler, limits);
         NotificationManager nm = getSystemService(NotificationManager.class);
         nm.createNotificationChannel(new NotificationChannel(
@@ -311,6 +312,7 @@ public class GuardService extends AccessibilityService {
                 if (!typing && FACEBOOK_SITE.matcher(url).find() && !FACEBOOK_OK.matcher(url).find()) {
                     return Limits.FACEBOOK;
                 }
+                if (!typing && AdultDomains.blocked(url)) return ADULT;
                 if (keywords.match(url.replaceAll("[./_-]", " ")) != null) return ADULT;
             }
         }

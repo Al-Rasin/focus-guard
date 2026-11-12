@@ -83,6 +83,7 @@ final class Setup {
             TextView ok = Ui.left(a, "✓ Protection is on" + (rooted(a) ? " (root watchdog)" : ""), 15, Ui.GREEN);
             ok.setPadding(0, 0, 0, Ui.dp(a, 4));
             root.addView(ok);
+            privateDns(a, root);
             return;
         }
         LinearLayout box = box(a);
@@ -127,6 +128,49 @@ final class Setup {
         step(a, box, "Notifications allowed", notificationsOk(a), "Allow", () -> open(a,
                 new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                         .putExtra(Settings.EXTRA_APP_PACKAGE, a.getPackageName())));
+        LinearLayout.LayoutParams lp = Ui.wide();
+        lp.bottomMargin = Ui.dp(a, 8);
+        root.addView(box, lp);
+    }
+
+    static final String DNS_HOST = "adult-filter-dns.cleanbrowsing.org";
+
+    /**
+     * Optional extra: a filtering Private DNS blocks adult sites in every app, not only in
+     * browsers. Apps can't set it without root, so we copy the host and open the settings.
+     * Skipped on rooted phones (the module decides) and once the user says no.
+     */
+    private static void privateDns(Activity a, LinearLayout root) {
+        SharedPreferences p = prefs(a);
+        if (rooted(a) || p.getBoolean("dns_skip", false)) return;
+        if ("hostname".equals(Settings.Global.getString(a.getContentResolver(), "private_dns_mode"))) return;
+        LinearLayout box = box(a);
+        TextView head = Ui.left(a, "Optional: filter adult sites in all apps", 16, Ui.WHITE);
+        head.setTypeface(Typeface.DEFAULT_BOLD);
+        box.addView(head);
+        box.addView(Ui.space(a, 4));
+        box.addView(Ui.left(a, "Settings → Private DNS → \"Private DNS provider hostname\" → paste "
+                + DNS_HOST + ". If some sites stop loading on your network, set it back to Automatic.",
+                13, Ui.MUTED));
+        box.addView(Ui.space(a, 8));
+        LinearLayout row = Ui.row(a);
+        Button set = Ui.small(a, "Copy host & open settings");
+        set.setOnClickListener(v -> {
+            android.content.ClipboardManager cb = a.getSystemService(android.content.ClipboardManager.class);
+            cb.setPrimaryClip(android.content.ClipData.newPlainText("Private DNS", DNS_HOST));
+            android.widget.Toast.makeText(a, "Copied " + DNS_HOST, android.widget.Toast.LENGTH_SHORT).show();
+            if (!open(a, new Intent("android.settings.PRIVATE_DNS_SETTINGS")))
+                open(a, new Intent(Settings.ACTION_WIRELESS_SETTINGS));
+        });
+        row.addView(set);
+        row.addView(Ui.space(a, 1), new LinearLayout.LayoutParams(Ui.dp(a, 8), 1));
+        Button no = Ui.small(a, "No thanks");
+        no.setOnClickListener(v -> {
+            p.edit().putBoolean("dns_skip", true).apply();
+            a.recreate();
+        });
+        row.addView(no);
+        box.addView(row);
         LinearLayout.LayoutParams lp = Ui.wide();
         lp.bottomMargin = Ui.dp(a, 8);
         root.addView(box, lp);
