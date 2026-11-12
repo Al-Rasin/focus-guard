@@ -19,16 +19,26 @@ async function render() {
   }
 
   const s = await send({ type: "state", cat });
-  if (s.unlocked) return leave(target);
+  if (s.unlocked || !s.enabled) return leave(target);
 
   $("title").textContent = s.label;
   $("back").onclick = () => leave(s.home);
   const go = $("go");
   go.disabled = true;
+  if (s.idea) $("idea").textContent = `Instead: ${s.idea}`;
 
-  if (s.left > 0) {
+  if (s.scheduled) {
+    $("breathe").textContent = "Blocked by your schedule right now.";
+    $("count").hidden = go.hidden = true;
+    return;
+  } else if (s.left > 0 && s.waitMin > 0) {
+    $("breathe").textContent = `Next open in ${s.waitMin} min.`;
     $("info").textContent = `${s.left} of ${s.total} opens left today`;
-    go.textContent = "Open (15 min)";
+    $("count").hidden = go.hidden = true;
+    return;
+  } else if (s.left > 0) {
+    $("info").textContent = `${s.left} of ${s.total} opens left today`;
+    go.textContent = `Open (${s.openMin} min)`;
     go.onclick = async () => {
       await send({ type: "open", cat });
       leave(target);

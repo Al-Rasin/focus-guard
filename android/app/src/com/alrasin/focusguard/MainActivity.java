@@ -46,6 +46,12 @@ public class MainActivity extends Activity {
         if (screen.equals("home")) home();
     }
 
+    @Override
+    protected void onActivityResult(int req, int res, Intent data) {
+        if (Backup.onResult(this, req, res, data)) refresh();
+        else super.onActivityResult(req, res, data);
+    }
+
     /** Re-render the current screen (after a strict-mode change). */
     void refresh() {
         if (screen.equals("strict")) strict();
@@ -93,7 +99,7 @@ public class MainActivity extends Activity {
         Button saveSwaps = Ui.small(this, "Save ideas");
         saveSwaps.setOnClickListener(v -> {
             Config.saveSwaps(this, swaps.getText().toString());
-            Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L.t(this, "Saved"), Toast.LENGTH_SHORT).show();
         });
         root.addView(saveSwaps);
 
@@ -174,13 +180,13 @@ public class MainActivity extends Activity {
             for (String w : sched.getText().toString().split("[\\n,]")) {
                 if (w.trim().isEmpty()) continue;
                 if (Config.parseWindow(w) == null) {
-                    Toast.makeText(this, "Not a time window: " + w.trim(), Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, L.t(this, "Not a time window: " + w.trim()), Toast.LENGTH_LONG).show();
                     return;
                 }
                 windows.add(w.trim().replace(" ", ""));
             }
             edit.schedule = windows;
-            Toast.makeText(this, Strict.save(this, edit), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, L.t(this, Strict.save(this, edit)), Toast.LENGTH_LONG).show();
             home();
         });
         root.addView(save, Ui.wide());
@@ -189,7 +195,7 @@ public class MainActivity extends Activity {
             root.addView(Ui.space(this, 12));
             Button remove = Ui.button(this, "Remove this app", Ui.CARD, Ui.RED);
             remove.setOnClickListener(v -> {
-                Toast.makeText(this, Strict.removeApp(this, cat.substring(Limits.APP_PREFIX.length())),
+                Toast.makeText(this, L.t(this, Strict.removeApp(this, cat.substring(Limits.APP_PREFIX.length()))),
                         Toast.LENGTH_LONG).show();
                 home();
             });
@@ -270,7 +276,7 @@ public class MainActivity extends Activity {
     }
 
     TextView section(String s) {
-        TextView t = Ui.left(this, s.toUpperCase(), 13, Ui.SKY);
+        TextView t = Ui.left(this, L.t(this, s).toUpperCase(), 13, Ui.SKY);
         t.setTypeface(Typeface.DEFAULT_BOLD);
         t.setPadding(0, Ui.dp(this, 20), 0, Ui.dp(this, 8));
         return t;
@@ -285,7 +291,7 @@ public class MainActivity extends Activity {
     EditText input(String text, String hint) {
         EditText e = new EditText(this);
         e.setText(text);
-        e.setHint(hint);
+        e.setHint(L.t(this, hint));
         e.setHintTextColor(Color.parseColor("#6B7280"));
         e.setTextColor(Color.WHITE);
         e.setBackground(Ui.round(this, Ui.CARD, 10));
@@ -304,7 +310,7 @@ public class MainActivity extends Activity {
         value.setMinWidth(Ui.dp(this, 72));
         Runnable paint = () -> {
             int v = get.getAsInt();
-            value.setText(v == 0 && zero != null ? zero : v + (unit.isEmpty() ? "" : " " + unit).replace(" :", ":"));
+            value.setText(v == 0 && zero != null ? L.t(this, zero) : v + (unit.isEmpty() ? "" : " " + unit).replace(" :", ":"));
         };
         paint.run();
         Button minus = Ui.small(this, "−"), plus = Ui.small(this, "+");
@@ -335,7 +341,7 @@ public class MainActivity extends Activity {
 
     View toggle(String label, boolean on, BoolSink sink) {
         Switch s = new Switch(this);
-        s.setText(label);
+        s.setText(L.t(this, label));
         s.setTextSize(16);
         s.setTextColor(Color.WHITE);
         s.setChecked(on);

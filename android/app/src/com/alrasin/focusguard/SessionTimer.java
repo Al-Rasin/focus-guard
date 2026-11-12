@@ -201,7 +201,7 @@ final class SessionTimer {
 
     /** "left", or the user's own reason for this open (intention reminder). */
     private String normalLabel() {
-        if (why.isEmpty()) return "left";
+        if (why.isEmpty()) return L.t(service, "left");
         return why.length() > 14 ? why.substring(0, 13) + "…" : why;
     }
 
@@ -213,7 +213,7 @@ final class SessionTimer {
         bg.setStroke(Math.round(2 * service.getResources().getDisplayMetrics().density), warn ? WARN : ACCENT);
         time.setTextColor(warn ? WARN_TEXT : ACCENT);
         label.setTextColor(warn ? WARN_TEXT : MUTED);
-        label.setText(warn ? "last min" : normalLabel());
+        label.setText(warn ? L.t(service, "last min") : normalLabel());
         if (warn) {
             pulse = ObjectAnimator.ofFloat(view, "alpha", 1f, 0.55f);
             pulse.setDuration(600);

@@ -19,7 +19,7 @@ final class Ui {
 
     static TextView text(Context c, String s, int sp, String color) {
         TextView t = new TextView(c);
-        t.setText(s);
+        t.setText(L.t(c, s));
         t.setTextSize(sp);
         t.setTextColor(Color.parseColor(color));
         t.setGravity(Gravity.CENTER);
@@ -34,7 +34,7 @@ final class Ui {
 
     static Button button(Context c, String s, String bg, String fg) {
         Button b = new Button(c);
-        b.setText(s);
+        b.setText(L.t(c, s));
         b.setAllCaps(false);
         b.setTextSize(17);
         b.setTextColor(Color.parseColor(fg));

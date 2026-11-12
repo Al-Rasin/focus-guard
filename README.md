@@ -46,6 +46,8 @@ Vivo, Huawei) and notifications. If Android stops the service, a "tap to fix" no
   Can't stop: safe-mode boot, factory reset, the accessibility volume-key shortcut (the app warns about it).
 - **Stats**: today's opens, times you went back, minutes, streak; last 7 days vs the week before.
   Stored on the phone only, kept 60 days.
+- **Backup**: save settings to a JSON file and load them back (also on another phone, or in the Mac extension).
+- **Language**: English or Bangla (follows the phone, or pick one).
 
 ### With root (Magisk)
 
@@ -76,6 +78,10 @@ Privacy & Security → Full Disk Access → +). Without it the daemon can't see 
 and hard-blocks Shorts and facebook.com. Building it needs Xcode or the Command Line Tools.
 A root daemon enforces browser policies (no guest mode, SafeSearch, filtered DoH; no private windows in Brave) and the hosts block.
 The two extensions re-enable each other if one is turned off.
+
+Settings: right-click the Focus Guard icon → Options. Per target (Shorts, Reels, facebook.com): pause length,
+opens per day, minutes per open, cooldown, extend rules, block hours, time-left tab, "do this instead" ideas.
+Stricter changes apply at once, looser ones after 24 h. The same backup file as the Android app can be loaded here.
 
 To remove: `sudo ./mac/uninstall.sh` schedules removal 24 h later (`cancel` withdraws it).
 

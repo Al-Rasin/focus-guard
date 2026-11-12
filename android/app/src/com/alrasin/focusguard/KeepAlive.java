@@ -72,8 +72,8 @@ public class KeepAlive extends JobService {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         nm.notify(NOTE, new Notification.Builder(c, "alerts")
                 .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
-                .setContentTitle(on ? "Focus Guard stopped" : "Focus Guard is off")
-                .setContentText(on ? "Android stopped it. Tap to fix." : "Tap to turn it back on.")
+                .setContentTitle(L.t(c, on ? "Focus Guard stopped" : "Focus Guard is off"))
+                .setContentText(L.t(c, on ? "Android stopped it. Tap to fix." : "Tap to turn it back on."))
                 .setContentIntent(pi)
                 .setOngoing(true)
                 .build());

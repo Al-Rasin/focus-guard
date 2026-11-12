@@ -66,15 +66,21 @@ function show(time, warn) {
   tab.querySelector("span").style.color = warn ? "#0E1116" : "#AEB6C2";
 }
 
+let running = false; // an open was running on this page at the last tick
+
 async function tick() {
   const cat = Object.keys(PAGES).find(c => PAGES[c].test(location.href.toLowerCase()));
   if (!cat) return hide();
   const key = `until_${cat}`;
-  const left = ((await chrome.storage.local.get(key))[key] || 0) - Date.now();
+  const st = await chrome.storage.local.get([key, "config"]);
+  const left = (st[key] || 0) - Date.now();
   if (left <= 0) {
-    if (tab) chrome.runtime.sendMessage({ type: "recheck" });
+    if (running) chrome.runtime.sendMessage({ type: "recheck" });
+    running = false;
     return hide();
   }
+  running = true;
+  if ((st.config || {})[cat]?.timer === false) return hide(); // user turned the tab off
   const s = Math.ceil(left / 1000);
   show(`${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`, left <= 60000);
 }

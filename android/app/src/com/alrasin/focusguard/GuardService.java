@@ -193,7 +193,7 @@ public class GuardService extends AccessibilityService {
         if (limits.videosNow(cat) >= c.maxVideos) {
             trace("video limit " + cat);
             limits.endOpen(cat);
-            Toast.makeText(this, c.maxVideos + " videos watched, open ended", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L.t(this, c.maxVideos + " videos watched, open ended"), Toast.LENGTH_SHORT).show();
             queueScan();
         }
     }
@@ -285,7 +285,7 @@ public class GuardService extends AccessibilityService {
         trace("strict: settings screen closed");
         performGlobalAction(GLOBAL_ACTION_HOME);
         handler.post(() -> android.widget.Toast.makeText(this,
-                "Strict mode is on. Changes to Focus Guard wait " + Strict.delayH(this) + " h.",
+                L.t(this, "Strict mode is on. Changes to Focus Guard wait " + Strict.delayH(this) + " h."),
                 android.widget.Toast.LENGTH_LONG).show());
     }
 
@@ -412,7 +412,7 @@ public class GuardService extends AccessibilityService {
         escaping = true;
         escapeStartedAt = now;
         trace("leave " + pkg);
-        if (message != null) Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+        if (message != null) Toast.makeText(this, L.t(this, message), Toast.LENGTH_SHORT).show();
         // Give a closing pause screen time to reveal the app underneath.
         handler.postDelayed(() -> escapeStep(pkg, 0, 0), 300);
     }
@@ -517,7 +517,7 @@ public class GuardService extends AccessibilityService {
             lastKickAt = now; // the next scan may still see the chat; don't back out of Telegram
             performGlobalAction(GLOBAL_ACTION_BACK);
             handler.postDelayed(() -> performGlobalAction(GLOBAL_ACTION_BACK), 350);
-            Toast.makeText(this, "Adult channel blocked", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L.t(this, "Adult channel blocked"), Toast.LENGTH_SHORT).show();
         }
     }
 

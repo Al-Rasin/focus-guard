@@ -218,7 +218,7 @@ final class Strict {
             Button now = Ui.small(a, "Apply now (PIN)");
             now.setOnClickListener(v -> askPin(a, "Partner PIN", () -> {
                 applyAll(a);
-                Toast.makeText(a, "Applied", Toast.LENGTH_SHORT).show();
+                Toast.makeText(a, L.t(a, "Applied"), Toast.LENGTH_SHORT).show();
                 restart(a);
             }));
             row.addView(now);
@@ -265,7 +265,7 @@ final class Strict {
         new AlertDialog.Builder(a).setTitle(title).setView(e)
                 .setPositiveButton("OK", (d, w) -> {
                     if (checkPin(a, e.getText().toString())) ok.run();
-                    else Toast.makeText(a, "Wrong PIN", Toast.LENGTH_SHORT).show();
+                    else Toast.makeText(a, L.t(a, "Wrong PIN"), Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("Cancel", null).show();
     }
@@ -288,7 +288,7 @@ final class Strict {
     private static void emergency(Activity a) {
         long next = emergencyNext(a);
         if (next > now(a)) {
-            Toast.makeText(a, "Next emergency open: " + when(next), Toast.LENGTH_LONG).show();
+            Toast.makeText(a, L.t(a, "Next emergency open: " + when(next)), Toast.LENGTH_LONG).show();
             return;
         }
         java.util.List<String> cats = new java.util.ArrayList<>();
@@ -333,7 +333,7 @@ final class Strict {
             prefs(a).edit().putLong("emergency", now(a)).apply();
             new Limits(a).open(cat);
             d.dismiss();
-            Toast.makeText(a, Limits.label(a, cat) + " open", Toast.LENGTH_LONG).show();
+            Toast.makeText(a, L.t(a, Limits.label(a, cat) + " open"), Toast.LENGTH_LONG).show();
             restart(a);
         });
     }
@@ -405,11 +405,11 @@ final class Strict {
         root.addView(a.toggle("Strict mode", on(a), b -> {
             if (b) {
                 p.edit().putBoolean("on", true).remove("off_at").apply();
-                Toast.makeText(a, "Strict mode on", Toast.LENGTH_SHORT).show();
+                Toast.makeText(a, L.t(a, "Strict mode on"), Toast.LENGTH_SHORT).show();
             } else if (on(a) && !p.contains("off_at")) {
                 long at = at(a);
                 p.edit().putLong("off_at", at).apply();
-                Toast.makeText(a, "Strict mode ends " + when(at), Toast.LENGTH_LONG).show();
+                Toast.makeText(a, L.t(a, "Strict mode ends " + when(at)), Toast.LENGTH_LONG).show();
             }
             a.refresh();
         }));
@@ -434,7 +434,7 @@ final class Strict {
                 } else {
                     long at = at(a);
                     p.edit().putLong("delay_at", at).putInt("delay_to", h).apply();
-                    Toast.makeText(a, "Shorter delay from " + when(at), Toast.LENGTH_LONG).show();
+                    Toast.makeText(a, L.t(a, "Shorter delay from " + when(at)), Toast.LENGTH_LONG).show();
                 }
                 a.refresh();
             });
@@ -456,11 +456,11 @@ final class Strict {
                         .setPositiveButton("Save", (d, w) -> {
                             String s = e.getText().toString();
                             if (s.length() < 4) {
-                                Toast.makeText(a, "At least 4 digits", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(a, L.t(a, "At least 4 digits"), Toast.LENGTH_SHORT).show();
                                 return;
                             }
                             setPin(a, s);
-                            Toast.makeText(a, "PIN saved", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(a, L.t(a, "PIN saved"), Toast.LENGTH_SHORT).show();
                             a.refresh();
                         })
                         .setNegativeButton("Cancel", null).show();

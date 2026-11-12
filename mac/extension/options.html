@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Focus Guard settings</title>
+<style>
+  body { margin: 0; background: #0E1116; color: #AEB6C2; font: 15px -apple-system, system-ui, sans-serif; }
+  main { max-width: 640px; margin: 0 auto; padding: 32px 20px 60px; }
+  h1 { color: #fff; font-size: 26px; margin: 0 0 6px; }
+  h2 { color: #7DD3FC; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; margin: 28px 0 8px; }
+  .card { background: #161B22; border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; }
+  .card h3 { color: #fff; margin: 0 0 10px; font-size: 17px; display: flex; justify-content: space-between; }
+  label { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; gap: 12px; }
+  input[type=number] { width: 70px; }
+  input[type=text], textarea { width: 100%; box-sizing: border-box; }
+  input, textarea { background: #0E1116; color: #fff; border: 1px solid #2A313C; border-radius: 8px; padding: 6px 8px;
+                    font: inherit; }
+  .pending { color: #FBBF24; font-size: 13px; margin-top: 6px; }
+  button { background: #7DD3FC; color: #0E1116; border: 0; border-radius: 12px; padding: 10px 16px; font-size: 15px;
+           cursor: pointer; margin: 4px 8px 4px 0; }
+  button.alt { background: #1F2937; color: #fff; }
+  #msg { color: #7DD3FC; margin-top: 10px; min-height: 1.2em; }
+  .muted { font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Focus Guard</h1>
+  <div class="muted">Stricter changes apply at once. Looser ones wait 24 h. Adult blocking is always on.</div>
+  <h2>Targets</h2>
+  <div id="cats"></div>
+  <h2>Do this instead</h2>
+  <div class="muted">One idea per line. The pause page shows one at random.</div>
+  <textarea id="swaps" rows="4"></textarea>
+  <div><button id="save">Save</button></div>
+  <h2>Backup</h2>
+  <div class="muted">Same file as the Android app. Only YouTube Shorts, Facebook Reels and Facebook are used here.</div>
+  <button class="alt" id="export">Save settings to a file</button>
+  <button class="alt" id="import">Load settings from a file</button>
+  <input type="file" id="file" accept=".json,application/json" hidden>
+  <div id="msg"></div>
+</main>
+<script src="options.js"></script>
+</body>
+</html>

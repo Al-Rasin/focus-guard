@@ -165,7 +165,7 @@ final class Setup {
         set.setOnClickListener(v -> {
             android.content.ClipboardManager cb = a.getSystemService(android.content.ClipboardManager.class);
             cb.setPrimaryClip(android.content.ClipData.newPlainText("Private DNS", DNS_HOST));
-            android.widget.Toast.makeText(a, "Copied " + DNS_HOST, android.widget.Toast.LENGTH_SHORT).show();
+            android.widget.Toast.makeText(a, L.t(a, "Copied " + DNS_HOST), android.widget.Toast.LENGTH_SHORT).show();
             if (!open(a, new Intent("android.settings.PRIVATE_DNS_SETTINGS")))
                 open(a, new Intent(Settings.ACTION_WIRELESS_SETTINGS));
         });

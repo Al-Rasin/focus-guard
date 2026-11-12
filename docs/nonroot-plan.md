@@ -101,7 +101,7 @@ keep-alive; without it, the app does it itself. No Gradle, no libraries, UI buil
 1 → 2 → 5 first (settings, staying alive, adult blocking), then 3, 4, 6, 7, 8.
 
 ## Progress
-- Done (code, not device-tested): 1, 2, 5, 3, 4, 6, 7 (no rename).
+- Done (code, not device-tested): all phases 1–8 (no rename).
 - Phase 3: Instagram Reels ids need calibration with `uiautomator dump` on a device.
 - Phase 4 as built: `Strict.java` (prefs `strict`: pending `p_<cat>`, `rm_<pkg>`, `delay_at`,
   `off_at`; delay 1/6/24/72 h; salted SHA-256 PIN; emergency open once per 7 days after 60 s),
@@ -114,3 +114,12 @@ keep-alive; without it, the app does it itself. No Gradle, no libraries, UI buil
 - Phase 7 as built: targetSdk 34, `<queries>` for launcher apps (app picker), POST_NOTIFICATIONS
   asked once at runtime (then settings). Package rename skipped (no new name yet). Release
   signing via `FG_KEYSTORE` / `FG_KS_PASS`. README covers the non-root app; no LICENSE yet.
+- Phase 8 as built: `Backup.java` — save/load settings as a JSON file through the system file
+  picker (no storage permission). Format `{"focusguard":1,"targets":{cat:config},"apps":[...],
+  "swaps":"..."}`; load goes through `Strict.save`, so looser settings still wait. `L.java` — UI
+  text in English or Bangla (phone language, or picked under "Language"); exact strings plus
+  `%s` templates. Mac extension v1.5: options page (`options.html/js`) with the same fields
+  (enabled, pause + growing pause, opens, minutes per open, cooldown, extend rules, block hours,
+  timer tab, ideas) and the same backup file (only shorts/reels/facebook used). Looser changes
+  on Mac always wait 24 h; daily cap, max videos, "why" prompt and whole-app mode are kept in
+  the file but not enforced there.
