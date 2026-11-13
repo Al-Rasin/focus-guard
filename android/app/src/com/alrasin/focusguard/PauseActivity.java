@@ -75,104 +75,134 @@ public class PauseActivity extends Activity {
 
         LinearLayout root = Ui.column(this);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
-        int pad = Ui.dp(this, 28);
-        root.setPadding(pad, Ui.dp(this, 40), pad, pad);
+        int pad = Ui.dp(this, 24);
+        root.setPadding(pad, Ui.dp(this, 32), pad, Ui.dp(this, 24));
 
+        // Header: app icon + name, then where you stand today.
+        LinearLayout head = Ui.row(this);
+        head.setGravity(Gravity.CENTER);
         Drawable icon = icon();
         if (icon != null) {
             ImageView iv = new ImageView(this);
             iv.setImageDrawable(icon);
-            root.addView(iv, new LinearLayout.LayoutParams(Ui.dp(this, 56), Ui.dp(this, 56)));
-            root.addView(Ui.space(this, 10));
+            head.addView(iv, new LinearLayout.LayoutParams(Ui.dp(this, 28), Ui.dp(this, 28)));
+            head.addView(Ui.space(this, 0), new LinearLayout.LayoutParams(Ui.dp(this, 10), 1));
         }
-        TextView title = Ui.text(this, label, 26, Ui.WHITE);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
-        root.addView(title);
+        TextView title = Ui.text(this, label, 18, Ui.WHITE);
+        title.setTypeface(Ui.weight(600));
+        head.addView(title);
+        root.addView(head);
         root.addView(Ui.space(this, 6));
-        root.addView(Ui.text(this, "Opened " + limits.used(cat) + " times today · "
-                + (limits.secondsToday(cat) + 59) / 60 + " min", 14, "#6B7280"));
+        int used = limits.used(cat), mins = (limits.secondsToday(cat) + 59) / 60;
+        root.addView(Ui.text(this, used == 0 ? "First time today"
+                : "Opened " + used + (used == 1 ? " time" : " times") + " today · " + mins + " min", 13, Ui.DIM));
+        int wins = Stats.weekSkips(this);
 
         if (blocked != null || cooldown > 0 || (left == 0 && !limits.canExtend(cat))) {
             // Nothing to open: say why, only "Go back".
             String why = blocked != null ? "Closed: " + blocked
                     : cooldown > 0 ? "Next open in " + cooldown + " min"
-                    : "Daily limit reached";
-            root.addView(Ui.space(this, 48));
-            TextView lock = Ui.text(this, "🔒", 56, Ui.WHITE);
-            root.addView(lock);
-            root.addView(Ui.space(this, 16));
-            root.addView(Ui.text(this, why, 19, Ui.WHITE));
+                    : "You've used all your opens";
+            root.addView(flex());
+            TextView lock = Ui.text(this, "🔒", 40, Ui.WHITE);
+            GradientDrawable lg = new GradientDrawable();
+            lg.setShape(GradientDrawable.OVAL);
+            lg.setColor(Color.parseColor(Ui.SURF2));
+            lg.setStroke(Ui.dp(this, 1), Color.parseColor(Ui.LINE2));
+            lock.setBackground(lg);
+            root.addView(lock, new LinearLayout.LayoutParams(Ui.dp(this, 112), Ui.dp(this, 112)));
+            root.addView(Ui.space(this, 24));
+            TextView h = Ui.text(this, why, 24, Ui.WHITE);
+            h.setTypeface(Ui.weight(600));
+            root.addView(h);
             root.addView(Ui.space(this, 8));
-            root.addView(Ui.text(this, "Good moment to do something else.", 15, Ui.MUTED));
+            root.addView(Ui.text(this, blocked == null && cooldown == 0
+                    ? "Back tomorrow. Good moment to do something else." : "Good moment to do something else.", 15, Ui.MUTED));
+            if (wins > 0) {
+                root.addView(Ui.space(this, 20));
+                root.addView(Ui.badge(this, "✓  Went back " + wins + "× this week", Ui.GREEN, Ui.GREEN_BOX), wrap());
+            }
             addSwap(root);
-            root.addView(Ui.space(this, 40));
-            Button back = Ui.button(this, "Go back", Ui.SKY, Ui.BG);
+            root.addView(flex());
+            Button back = Ui.pill(this, "Go back");
             back.setOnClickListener(v -> goBack());
             root.addView(back, Ui.wide());
             show(root);
+            if (android.os.Build.VERSION.SDK_INT >= 30)
+                root.post(() -> Ui.buzz(root, android.view.HapticFeedbackConstants.REJECT));
             return;
         }
 
-        root.addView(Ui.space(this, 20));
-        root.addView(Ui.text(this, question(), 17, Ui.MUTED));
-        root.addView(Ui.space(this, 20));
+        root.addView(flex());
+        TextView q = Ui.text(this, question(), 20, Ui.WHITE);
+        q.setTypeface(Ui.weight(500));
+        q.setLineSpacing(0, 1.15f);
+        root.addView(q);
+        root.addView(Ui.space(this, 28));
 
-        // Breathing circle with the countdown inside.
+        // Breathing orb: three soft rings that swell and settle, countdown in the middle.
         int seconds = limits.pauseSeconds(cat);
-        int size = Ui.dp(this, 200);
-        FrameLayout circle = new FrameLayout(this);
-        View ring = new View(this);
-        GradientDrawable g = new GradientDrawable();
-        g.setShape(GradientDrawable.OVAL);
-        g.setColor(Color.parseColor("#1A7DD3FC"));
-        g.setStroke(Ui.dp(this, 2), Color.parseColor(Ui.SKY));
-        ring.setBackground(g);
-        circle.addView(ring, new FrameLayout.LayoutParams(size, size));
-        TextView count = Ui.text(this, seconds + "", 56, Ui.SKY);
-        count.setTypeface(Typeface.DEFAULT_BOLD);
-        circle.addView(count, new FrameLayout.LayoutParams(size, size, Gravity.CENTER));
-        root.addView(circle, new LinearLayout.LayoutParams(size, size));
-        root.addView(Ui.space(this, 10));
-        TextView breathe = Ui.text(this, "Breathe in", 16, Ui.SKY);
+        int size = Ui.dp(this, 232);
+        FrameLayout orb = new FrameLayout(this);
+        View r1 = disc("#0B2433", null), r2 = disc("#0F3347", null), r3 = disc("#13415B", Ui.SKY);
+        orb.addView(r1, new FrameLayout.LayoutParams(size, size, Gravity.CENTER));
+        orb.addView(r2, new FrameLayout.LayoutParams(size * 3 / 4, size * 3 / 4, Gravity.CENTER));
+        orb.addView(r3, new FrameLayout.LayoutParams(size / 2, size / 2, Gravity.CENTER));
+        TextView count = Ui.number(this, seconds + "", 48, Ui.SKY_SOFT);
+        orb.addView(count, new FrameLayout.LayoutParams(size, size, Gravity.CENTER));
+        root.addView(orb, new LinearLayout.LayoutParams(size, size));
+        root.addView(Ui.space(this, 16));
+        TextView breathe = Ui.text(this, "Breathe in", 15, Ui.SKY);
+        breathe.setLetterSpacing(0.04f);
         root.addView(breathe);
-        breath = ValueAnimator.ofFloat(0.6f, 1f);
+        int bgFrom = Color.parseColor(Ui.BG), bgTo = Color.parseColor("#0C1A24");
+        android.animation.ArgbEvaluator argb = new android.animation.ArgbEvaluator();
+        breath = ValueAnimator.ofFloat(0f, 1f);
         breath.setDuration(4000);
+        breath.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
         breath.setRepeatMode(ValueAnimator.REVERSE);
         breath.setRepeatCount(ValueAnimator.INFINITE);
-        breath.addUpdateListener(a -> {
-            float f = (float) a.getAnimatedValue();
-            ring.setScaleX(f);
-            ring.setScaleY(f);
+        breath.addUpdateListener(an -> {
+            float f = (float) an.getAnimatedValue();
+            scale(r1, 0.62f + 0.38f * f);
+            scale(r2, 0.72f + 0.28f * f);
+            scale(r3, 0.86f + 0.14f * f);
+            r1.setAlpha(0.5f + 0.5f * f);
+            if (scroll != null) scroll.setBackgroundColor((int) argb.evaluate(f, bgFrom, bgTo));
         });
         final boolean[] in = {true};
         breath.addListener(new AnimatorListenerAdapter() {
             @Override
-            public void onAnimationRepeat(Animator a) {
+            public void onAnimationRepeat(Animator an) {
                 in[0] = !in[0];
                 breathe.setText(L.t(PauseActivity.this, in[0] ? "Breathe in" : "Breathe out"));
             }
         });
         breath.start();
 
+        if (wins > 0) {
+            root.addView(Ui.space(this, 24));
+            root.addView(Ui.badge(this, "✓  You went back " + wins + "× this week", Ui.GREEN, Ui.GREEN_BOX), wrap());
+        }
         addSwap(root);
-        root.addView(Ui.space(this, 20));
+        root.addView(flex());
 
         boolean extending = left == 0;
         root.addView(Ui.text(this, extending
-                ? "Daily limit reached. Extensions left today: " + (cfg.extMax - limits.extends_(cat))
-                : left + " of " + limits.total(cat) + " opens left today", 15, Ui.MUTED));
+                ? "Daily limit reached · " + (cfg.extMax - limits.extends_(cat)) + " extensions left"
+                : left + " of " + limits.total(cat) + " opens left today", 13, Ui.DIM));
+        root.addView(Ui.space(this, 12));
 
         EditText why = null;
         whyOk = extending || !cfg.askWhy;
         if (!whyOk) {
-            root.addView(Ui.space(this, 16));
             why = new EditText(this);
             why.setHint(L.t(this, "Why are you opening it?"));
-            why.setHintTextColor(Color.parseColor("#6B7280"));
-            why.setTextColor(Color.WHITE);
+            why.setHintTextColor(Color.parseColor(Ui.DIM));
+            why.setTextColor(Color.parseColor(Ui.WHITE));
             why.setSingleLine(true);
-            why.setBackground(Ui.round(this, Ui.CARD, 10));
-            int p = Ui.dp(this, 12);
+            why.setBackground(Ui.outlined(this, Ui.SURF1, 14));
+            int p = Ui.dp(this, 14);
             why.setPadding(p, p, p, p);
             why.addTextChangedListener(new TextWatcher() {
                 public void beforeTextChanged(CharSequence s, int a, int b, int c) {
@@ -187,21 +217,20 @@ public class PauseActivity extends Activity {
                 }
             });
             root.addView(why, Ui.wide());
+            root.addView(Ui.space(this, 12));
         }
-        root.addView(Ui.space(this, 24));
 
-        Button back = Ui.button(this, "I don't want to open " + label, Ui.SKY, Ui.BG);
-        back.setTypeface(Typeface.DEFAULT_BOLD);
+        Button back = Ui.pill(this, "I don't want to open " + label);
         back.setOnClickListener(v -> goBack());
         root.addView(back, Ui.wide());
-        root.addView(Ui.space(this, 18));
+        root.addView(Ui.space(this, 16));
 
-        hint = Ui.text(this, "", 13, "#6B7280");
+        hint = Ui.text(this, "", 12, Ui.DIM);
         root.addView(hint);
         root.addView(Ui.space(this, 8));
 
         if (extending) {
-            Button ext = Ui.button(this, "Extend +" + cfg.extOpens + " opens", Ui.CARD, Ui.WHITE);
+            TextView ext = openChip("Extend +" + cfg.extOpens + " opens");
             ext.setOnClickListener(v -> {
                 // Extending may have closed (cutoff hour) while this screen was up: leave instead.
                 if (!limits.canExtend(cat)) {
@@ -218,20 +247,21 @@ public class PauseActivity extends Activity {
             // Session length: a few short choices plus the full length.
             long maxMs = limits.openMs(cat);
             int maxMin = (int) Math.max(1, maxMs / 60000);
-            List<Integer> mins = new ArrayList<>();
-            for (int m : CHOICES_MIN) if (m < maxMin && mins.size() < 3) mins.add(m);
-            mins.add(maxMin);
+            List<Integer> minsList = new ArrayList<>();
+            for (int m : CHOICES_MIN) if (m < maxMin && minsList.size() < 3) minsList.add(m);
+            minsList.add(maxMin);
             LinearLayout chips = Ui.row(this);
             final EditText whyBox = why;
-            for (int i = 0; i < mins.size(); i++) {
-                int m = mins.get(i);
-                Button chip = Ui.small(this, m + " min");
-                chip.setPadding(0, Ui.dp(this, 12), 0, Ui.dp(this, 12));
+            for (int i = 0; i < minsList.size(); i++) {
+                int m = minsList.get(i);
+                TextView chip = openChip(m + " min");
                 chip.setOnClickListener(v -> {
                     if (limits.hardBlock(cat) != null || limits.left(cat) == 0) {
                         goBack();
                         return;
                     }
+                    if (android.os.Build.VERSION.SDK_INT >= 30)
+                        Ui.buzz(v, android.view.HapticFeedbackConstants.CONFIRM);
                     limits.saveWhy(cat, whyBox == null ? "" : whyBox.getText().toString().trim());
                     limits.open(cat, m == maxMin ? maxMs : m * 60_000L);
                     if (GuardService.instance != null) GuardService.instance.showOpensLeft(cat);
@@ -246,27 +276,88 @@ public class PauseActivity extends Activity {
         }
         refresh();
         show(root);
+        Ui.enter(root);
 
-        timer = new CountDownTimer(seconds * 1000L, 250) {
+        long total = seconds * 1000L;
+        timer = new CountDownTimer(total, 50) {
             @Override
             public void onTick(long ms) {
                 count.setText(String.valueOf((ms + 999) / 1000));
+                int level = (int) (10000 * (total - ms) / Math.max(1, total));
+                for (View v : gated) fill(v, level);
             }
 
             @Override
             public void onFinish() {
                 count.setText("✓");
+                for (View v : gated) fill(v, 10000);
                 counted = true;
                 refresh();
             }
         }.start();
     }
 
+    private ScrollView scroll;
+
+    private static void scale(View v, float f) {
+        v.setScaleX(f);
+        v.setScaleY(f);
+    }
+
+    private View disc(String fill, String stroke) {
+        View v = new View(this);
+        GradientDrawable g = new GradientDrawable();
+        g.setShape(GradientDrawable.OVAL);
+        g.setColor(Color.parseColor(fill));
+        if (stroke != null) g.setStroke(Ui.dp(this, 2), Color.parseColor(stroke));
+        v.setBackground(g);
+        return v;
+    }
+
+    /** Flexible gap that pushes the actions to the bottom on tall screens. */
+    private View flex() {
+        View v = new View(this);
+        v.setLayoutParams(new LinearLayout.LayoutParams(1, 0, 1f));
+        v.setMinimumHeight(Ui.dp(this, 20));
+        return v;
+    }
+
+    private static LinearLayout.LayoutParams wrap() {
+        return new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+    }
+
+    /** Outlined open choice; a soft sky fill grows behind it while the countdown runs. */
+    private TextView openChip(String s) {
+        TextView t = Ui.text(this, s, 15, Ui.WHITE);
+        t.setTypeface(Ui.weight(500));
+        t.setPadding(0, Ui.dp(this, 14), 0, Ui.dp(this, 14));
+        android.graphics.drawable.ClipDrawable clip = new android.graphics.drawable.ClipDrawable(
+                Ui.round(this, Ui.SKY_BOX, 14), Gravity.START, android.graphics.drawable.ClipDrawable.HORIZONTAL);
+        t.setBackground(new android.graphics.drawable.LayerDrawable(new Drawable[]{
+                Ui.round(this, Ui.SURF1, 14), clip, stroke()}));
+        Ui.press(t);
+        return t;
+    }
+
+    private Drawable stroke() {
+        GradientDrawable g = new GradientDrawable();
+        g.setCornerRadius(Ui.dp(this, 14));
+        g.setStroke(Ui.dp(this, 1), Color.parseColor(Ui.LINE2));
+        return g;
+    }
+
+    private static void fill(View v, int level) {
+        if (v.getBackground() instanceof android.graphics.drawable.LayerDrawable)
+            ((android.graphics.drawable.LayerDrawable) v.getBackground()).getDrawable(1).setLevel(level);
+    }
+
     private void refresh() {
         boolean on = counted && whyOk;
         for (View v : gated) {
             v.setEnabled(on);
-            v.setAlpha(on ? 1f : 0.35f);
+            v.setAlpha(on ? 1f : 0.55f);
+            if (v instanceof TextView) ((TextView) v).setTextColor(Color.parseColor(on ? Ui.SKY_SOFT : Ui.DIM));
         }
         if (hint != null) {
             hint.setText(L.t(this, !counted ? "Wait for the timer to open it"
@@ -278,11 +369,12 @@ public class PauseActivity extends Activity {
         String swap = swap();
         if (swap == null) return;
         root.addView(Ui.space(this, 16));
-        TextView t = Ui.text(this, "Or instead: " + swap, 16, Ui.GREEN);
-        t.setBackground(Ui.round(this, "#14301F", 12));
-        int p = Ui.dp(this, 12);
-        t.setPadding(p, p, p, p);
-        root.addView(t, Ui.wide());
+        LinearLayout box = Ui.card(this);
+        box.setBackground(Ui.round(this, Ui.GREEN_BOX, 16));
+        box.addView(Ui.overline(this, "Instead, you could", Ui.GREEN));
+        box.addView(Ui.space(this, 4));
+        box.addView(Ui.left(this, swap, 16, Ui.WHITE));
+        root.addView(box, Ui.wide());
     }
 
     /** Icon of the app being paused (null for browsers we can't name, or if it is gone). */
@@ -297,6 +389,7 @@ public class PauseActivity extends Activity {
 
     private void show(LinearLayout root) {
         ScrollView sv = new ScrollView(this);
+        scroll = sv;
         sv.setFillViewport(true);
         sv.setBackgroundColor(Color.parseColor(Ui.BG));
         sv.addView(root, new ScrollView.LayoutParams(ScrollView.LayoutParams.MATCH_PARENT,

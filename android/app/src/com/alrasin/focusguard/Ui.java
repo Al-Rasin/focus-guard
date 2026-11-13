@@ -22,8 +22,17 @@ final class Ui {
                     android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, r::run);
     }
 
-    static final String BG = "#0E1116", SKY = "#7DD3FC", MUTED = "#AEB6C2", CARD = "#1F2937",
-            WHITE = "#FFFFFF", RED = "#F87171", GREEN = "#86EFAC", LINE = "#2B3544", DIM = "#6B7280";
+    // Design tokens (dark, sky accent). Surfaces step up in lightness; 1 dp outlines instead of shadows.
+    static final String BG = "#0E1116", SURF1 = "#151A21", SURF2 = "#1C232C", SURF3 = "#252D38",
+            CARD = SURF1, LINE = "#2E3744", LINE2 = "#3D4757",
+            SKY = "#7DD3FC", ON_SKY = "#062234", SKY_BOX = "#0F3347", SKY_SOFT = "#BAE6FD",
+            GREEN = "#4ADE80", GREEN_BOX = "#0F2E1C", AMBER = "#FBBF24", AMBER_BOX = "#33270A",
+            RED = "#F87171", RED_BOX = "#3A1616",
+            WHITE = "#E8ECF1", MUTED = "#AEB6C2", DIM = "#7C8594";
+
+    static final android.view.animation.Interpolator EASE =
+            new android.view.animation.PathInterpolator(0.2f, 0f, 0f, 1f),
+            EASE_IN = new android.view.animation.PathInterpolator(0.05f, 0.7f, 0.1f, 1f);
 
     private Ui() {
     }
@@ -50,26 +59,29 @@ final class Ui {
         b.setTextSize(17);
         b.setTextColor(Color.parseColor(fg));
         b.setBackground(round(c, bg, 28));
-        b.setPadding(dp(c, 16), dp(c, 15), dp(c, 16), dp(c, 15));
+        b.setPadding(dp(c, 20), dp(c, 15), dp(c, 20), dp(c, 15));
+        b.setMinHeight(dp(c, 52));
         b.setStateListAnimator(null);
+        b.setTypeface(weight(500));
+        press(b);
         return b;
     }
 
     /** Main call-to-action: full-width sky pill with bold dark text. */
     static Button pill(Context c, String s) {
-        Button b = button(c, s, SKY, BG);
-        b.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        Button b = button(c, s, SKY, ON_SKY);
+        b.setTypeface(weight(600));
         return b;
     }
 
     /** Rounded chip; selected = sky fill, else outlined. */
     static TextView chip(Context c, String s, boolean on) {
-        TextView t = text(c, s, 14, on ? BG : WHITE);
-        GradientDrawable g = round(c, on ? SKY : CARD, 20);
-        if (!on) g.setStroke(dp(c, 1), Color.parseColor(LINE));
+        TextView t = text(c, s, 14, on ? SKY_SOFT : WHITE);
+        GradientDrawable g = round(c, on ? SKY_BOX : SURF1, 12);
+        g.setStroke(dp(c, 1), Color.parseColor(on ? SKY : LINE));
         t.setBackground(g);
-        t.setPadding(dp(c, 14), dp(c, 8), dp(c, 14), dp(c, 8));
-        if (on) t.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        t.setPadding(dp(c, 14), dp(c, 10), dp(c, 14), dp(c, 10));
+        t.setTypeface(weight(on ? 600 : 400));
         return t;
     }
 
@@ -80,7 +92,7 @@ final class Ui {
     /** iOS-style segmented control: equal segments in a dark track, selected one in sky. */
     static LinearLayout segmented(Context c, String[] labels, int selected, IntSink sink) {
         LinearLayout track = row(c);
-        track.setBackground(round(c, "#161C26", 14));
+        track.setBackground(outlined(c, SURF1, 14));
         int p = dp(c, 4);
         track.setPadding(p, p, p, p);
         TextView[] segs = new TextView[labels.length];
@@ -88,10 +100,9 @@ final class Ui {
         Runnable paint = () -> {
             for (int i = 0; i < segs.length; i++) {
                 boolean on = i == cur[0];
-                segs[i].setBackground(on ? round(c, SKY, 11) : null);
-                segs[i].setTextColor(Color.parseColor(on ? BG : MUTED));
-                segs[i].setTypeface(on ? android.graphics.Typeface.DEFAULT_BOLD
-                        : android.graphics.Typeface.DEFAULT);
+                segs[i].setBackground(on ? round(c, SURF3, 11) : null);
+                segs[i].setTextColor(Color.parseColor(on ? WHITE : DIM));
+                segs[i].setTypeface(weight(on ? 600 : 400));
             }
         };
         for (int i = 0; i < labels.length; i++) {
@@ -100,6 +111,7 @@ final class Ui {
             final int idx = i;
             t.setOnClickListener(v -> {
                 cur[0] = idx;
+                buzz(v, android.view.HapticFeedbackConstants.CLOCK_TICK);
                 paint.run();
                 sink.set(idx);
             });
@@ -110,10 +122,19 @@ final class Ui {
         return track;
     }
 
-    /** Standard surface card: CARD fill, radius 20, 16 dp padding. */
+    /** Secondary action: outlined pill. */
+    static Button ghost(Context c, String s) {
+        Button b = button(c, s, BG, WHITE);
+        GradientDrawable g = round(c, SURF1, 28);
+        g.setStroke(dp(c, 1), Color.parseColor(LINE2));
+        b.setBackground(g);
+        return b;
+    }
+
+    /** Standard surface card: surface fill, 1 dp outline, radius 20, 16 dp padding. */
     static LinearLayout card(Context c) {
         LinearLayout l = column(c);
-        l.setBackground(round(c, CARD, 20));
+        l.setBackground(outlined(c, CARD, 20));
         int p = dp(c, 16);
         l.setPadding(p, p, p, p);
         return l;
@@ -135,6 +156,82 @@ final class Ui {
         shape.setColor(Color.parseColor(color));
         shape.setCornerRadius(dp(c, radiusDp));
         return shape;
+    }
+
+    static GradientDrawable outlined(Context c, String color, int radiusDp) {
+        GradientDrawable g = round(c, color, radiusDp);
+        g.setStroke(dp(c, 1), Color.parseColor(LINE));
+        return g;
+    }
+
+    /** Typeface of a given weight (API 28+; else bold for 600+). */
+    static android.graphics.Typeface weight(int w) {
+        if (android.os.Build.VERSION.SDK_INT >= 28)
+            return android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, w, false);
+        return w >= 600 ? android.graphics.Typeface.DEFAULT_BOLD : android.graphics.Typeface.DEFAULT;
+    }
+
+    /** Big number: display size, tabular digits. */
+    static TextView number(Context c, String s, int sp, String color) {
+        TextView t = text(c, s, sp, color);
+        t.setTypeface(weight(700));
+        t.setFontFeatureSettings("tnum");
+        t.setIncludeFontPadding(false);
+        return t;
+    }
+
+    /** Title text with weight 600, left aligned. */
+    static TextView title(Context c, String s, int sp) {
+        TextView t = left(c, s, sp, WHITE);
+        t.setTypeface(weight(600));
+        return t;
+    }
+
+    /** Small caps label above a section. */
+    static TextView overline(Context c, String s, String color) {
+        TextView t = left(c, L.t(c, s).toUpperCase(), 11, color);
+        t.setTypeface(weight(600));
+        t.setLetterSpacing(0.08f);
+        return t;
+    }
+
+    /** Soft tinted badge (e.g. status). */
+    static TextView badge(Context c, String s, String fg, String bg) {
+        TextView t = text(c, s, 12, fg);
+        t.setTypeface(weight(600));
+        t.setBackground(round(c, bg, 10));
+        t.setPadding(dp(c, 10), dp(c, 4), dp(c, 10), dp(c, 4));
+        return t;
+    }
+
+    /** Press feedback: scale to 0.97 while held. */
+    static void press(View v) {
+        v.setOnTouchListener((view, e) -> {
+            int a = e.getActionMasked();
+            if (a == android.view.MotionEvent.ACTION_DOWN)
+                view.animate().scaleX(0.97f).scaleY(0.97f).setDuration(90).setInterpolator(EASE).start();
+            else if (a == android.view.MotionEvent.ACTION_UP || a == android.view.MotionEvent.ACTION_CANCEL)
+                view.animate().scaleX(1f).scaleY(1f).setDuration(150).setInterpolator(EASE).start();
+            return false;
+        });
+    }
+
+    /** Haptic tick (HapticFeedbackConstants value). */
+    static void buzz(View v, int kind) {
+        v.performHapticFeedback(kind);
+    }
+
+    /** Fade + rise in the children of a container, 40 ms apart. */
+    static void enter(android.view.ViewGroup g) {
+        int n = Math.min(g.getChildCount(), 12);
+        float rise = dp(g.getContext(), 16);
+        for (int i = 0; i < n; i++) {
+            View v = g.getChildAt(i);
+            v.setAlpha(0f);
+            v.setTranslationY(rise);
+            v.animate().alpha(1f).translationY(0f).setStartDelay(i * 40L).setDuration(350)
+                    .setInterpolator(EASE_IN).start();
+        }
     }
 
     static LinearLayout.LayoutParams wide() {

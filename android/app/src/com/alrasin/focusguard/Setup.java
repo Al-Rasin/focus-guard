@@ -6,7 +6,6 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
 import android.os.PowerManager;
@@ -118,7 +117,7 @@ final class Setup {
         }
         LinearLayout box = box(a);
         TextView head = Ui.left(a, "Finish setup", 17, Ui.WHITE);
-        head.setTypeface(Typeface.DEFAULT_BOLD);
+        head.setTypeface(Ui.weight(600));
         box.addView(head);
         box.addView(Ui.left(a, "Android stops apps it thinks are idle. Each step keeps Focus Guard running.",
                 14, Ui.MUTED));
@@ -213,7 +212,7 @@ final class Setup {
         if ("hostname".equals(Settings.Global.getString(a.getContentResolver(), "private_dns_mode"))) return;
         LinearLayout box = box(a);
         TextView head = Ui.left(a, "Optional: filter adult sites in all apps", 16, Ui.WHITE);
-        head.setTypeface(Typeface.DEFAULT_BOLD);
+        head.setTypeface(Ui.weight(600));
         box.addView(head);
         box.addView(Ui.space(a, 4));
         box.addView(Ui.left(a, "Settings → Private DNS → \"Private DNS provider hostname\" → paste "
@@ -255,7 +254,7 @@ final class Setup {
         LinearLayout row = Ui.row(a);
         row.setPadding(0, Ui.dp(a, 10), 0, Ui.dp(a, 4));
         TextView badge = Ui.text(a, ok ? "✓" : "", 13, Ui.BG);
-        badge.setTypeface(Typeface.DEFAULT_BOLD);
+        badge.setTypeface(Ui.weight(600));
         android.graphics.drawable.GradientDrawable g = Ui.round(a, ok ? Ui.GREEN : Ui.CARD, 12);
         if (!ok) g.setStroke(Ui.dp(a, 2), android.graphics.Color.parseColor(Ui.DIM));
         badge.setBackground(g);
@@ -298,7 +297,7 @@ final class Setup {
         LinearLayout box = box(a);
         if (p.getBoolean("declined", false)) {
             TextView head = Ui.left(a, "Focus Guard is not active", 17, Ui.WHITE);
-            head.setTypeface(Typeface.DEFAULT_BOLD);
+            head.setTypeface(Ui.weight(600));
             box.addView(head);
             box.addView(Ui.space(a, 6));
             box.addView(Ui.left(a, "You chose not to allow the Accessibility service. Without it Focus Guard "
@@ -312,7 +311,7 @@ final class Setup {
             box.addView(again, Ui.wide());
         } else {
             TextView head = Ui.left(a, "Accessibility service: your consent", 17, Ui.WHITE);
-            head.setTypeface(Typeface.DEFAULT_BOLD);
+            head.setTypeface(Ui.weight(600));
             box.addView(head);
             box.addView(Ui.space(a, 6));
             box.addView(Ui.left(a, Flavor.PLAY ? CONSENT_PLAY : CONSENT_TEXT, 14, Ui.MUTED));

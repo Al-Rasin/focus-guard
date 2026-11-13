@@ -3,7 +3,6 @@ package com.alrasin.focusguard;
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.graphics.Typeface;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -100,6 +99,11 @@ final class Stats {
         return n;
     }
 
+    /** Times the user went back from a pause in the last 7 days (today included). */
+    static int weekSkips(Context ctx) {
+        return sum(ctx, ctx.getSharedPreferences("limits", Context.MODE_PRIVATE), 0, 7).skips;
+    }
+
     private static Day sum(Context ctx, SharedPreferences p, int fromDaysAgo, int days) {
         Calendar c = Clock.calendar(ctx);
         c.add(Calendar.DAY_OF_YEAR, -fromDaysAgo);
@@ -155,24 +159,30 @@ final class Stats {
         if (!(a instanceof MainActivity)) return;
         MainActivity m = (MainActivity) a;
         Day week = sum(a, p, 0, 7), before = sum(a, p, 7, 7);
-        root.addView(weekCard(a, week, before));
-
-        root.addView(m.section("Today"));
-        Day t = day(p, Limits.day(Clock.now(a)));
-        LinearLayout tiles = Ui.row(a);
-        tiles.addView(tile(a, String.valueOf(t.opens), "opens"), Ui.grow());
-        tiles.addView(tile(a, String.valueOf(t.skips), "went back"), Ui.grow());
-        tiles.addView(tile(a, String.valueOf((t.seconds + 59) / 60), "minutes"), Ui.grow());
-        tiles.addView(tile(a, String.valueOf(streak(a, p)), "day streak"), Ui.grow());
-        root.addView(tiles);
+        root.addView(weekCard(a, week, before), Ui.wide());
 
         addChart(a, m, p, root);
 
+        root.addView(m.section("Today"));
+        Day t = day(p, Limits.day(Clock.now(a)));
+        int streak = streak(a, p);
+        LinearLayout r1 = Ui.row(a), r2 = Ui.row(a);
+        r1.addView(tile(a, String.valueOf((t.seconds + 59) / 60), "minutes", Ui.WHITE), Ui.grow());
+        r1.addView(gap(a));
+        r1.addView(tile(a, String.valueOf(t.opens), t.opens == 1 ? "open" : "opens", Ui.WHITE), Ui.grow());
+        r2.addView(tile(a, String.valueOf(t.skips), "went back", Ui.GREEN), Ui.grow());
+        r2.addView(gap(a));
+        r2.addView(tile(a, String.valueOf(streak), streak == 1 ? "day streak" : "days streak", Ui.AMBER), Ui.grow());
+        root.addView(r1, Ui.wide());
+        LinearLayout.LayoutParams lp2 = Ui.wide();
+        lp2.topMargin = Ui.dp(a, 10);
+        root.addView(r2, lp2);
+
         // Per-day list, newest first; days without any data are skipped.
         Calendar c = Clock.calendar(a);
-        SimpleDateFormat f = new SimpleDateFormat("EEEE d MMM", Locale.US);
+        SimpleDateFormat f = new SimpleDateFormat("EEEE, d MMM", Locale.US);
         LinearLayout list = Ui.card(a);
-        list.setPadding(Ui.dp(a, 16), Ui.dp(a, 4), Ui.dp(a, 16), Ui.dp(a, 4));
+        list.setPadding(Ui.dp(a, 16), Ui.dp(a, 2), Ui.dp(a, 16), Ui.dp(a, 2));
         for (int i = 0; i < 7; i++) {
             Day d = day(p, dayKey(c));
             if (d.any && i > 0) {
@@ -182,15 +192,14 @@ final class Stats {
                     list.addView(line, new LinearLayout.LayoutParams(-1, 1));
                 }
                 LinearLayout r = Ui.row(a);
-                r.setPadding(0, Ui.dp(a, 12), 0, Ui.dp(a, 12));
+                r.setPadding(0, Ui.dp(a, 14), 0, Ui.dp(a, 14));
                 LinearLayout txt = Ui.column(a);
-                txt.addView(Ui.left(a, f.format(c.getTime()), 15, Ui.WHITE));
-                txt.addView(Ui.left(a, d.opens + " opens · went back " + d.skips
-                        + (d.extends_ > 0 ? " · extended" : ""), 12, Ui.DIM));
+                txt.addView(Ui.title(a, f.format(c.getTime()), 15));
+                txt.addView(Ui.left(a, d.opens + (d.opens == 1 ? " open" : " opens") + " · " + d.skips
+                        + " went back" + (d.extends_ > 0 ? " · extended" : ""), 13, Ui.DIM));
                 r.addView(txt, Ui.grow());
-                TextView mm = Ui.text(a, min(d.seconds), 15, Ui.SKY);
-                mm.setTypeface(Typeface.DEFAULT_BOLD);
-                r.addView(mm);
+                r.addView(Ui.number(a, String.valueOf((d.seconds + 59) / 60), 18, Ui.WHITE));
+                r.addView(Ui.text(a, " min", 13, Ui.MUTED));
                 list.addView(r, Ui.wide());
             }
             c.add(Calendar.DAY_OF_YEAR, -1);
@@ -201,101 +210,131 @@ final class Stats {
         }
     }
 
-    /** Big "last 7 days" card: minutes, opens/back line and a change-vs-last-week pill. */
+    private static android.view.View gap(Context a) {
+        android.view.View v = new android.view.View(a);
+        v.setLayoutParams(new LinearLayout.LayoutParams(Ui.dp(a, 10), 1));
+        return v;
+    }
+
+    /** Hero: minutes in the last 7 days, change vs the week before, and how often the pause won. */
     private static LinearLayout weekCard(Context a, Day week, Day before) {
-        LinearLayout card = Ui.card(a);
+        LinearLayout card = Ui.column(a);
         android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable(
                 android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
-                new int[]{android.graphics.Color.parseColor("#17324A"), android.graphics.Color.parseColor("#141B26")});
-        g.setCornerRadius(Ui.dp(a, 20));
-        g.setStroke(Ui.dp(a, 1), android.graphics.Color.parseColor("#23405A"));
+                new int[]{android.graphics.Color.parseColor("#13324A"), android.graphics.Color.parseColor(Ui.SURF1)});
+        g.setCornerRadius(Ui.dp(a, 28));
+        g.setStroke(Ui.dp(a, 1), android.graphics.Color.parseColor("#1F3B52"));
         card.setBackground(g);
-        int pad = Ui.dp(a, 18);
+        int pad = Ui.dp(a, 20);
         card.setPadding(pad, pad, pad, pad);
-        TextView lbl = Ui.left(a, "LAST 7 DAYS", 12, Ui.SKY);
-        lbl.setTypeface(Typeface.DEFAULT_BOLD);
-        lbl.setLetterSpacing(0.08f);
-        card.addView(lbl);
-        LinearLayout big = Ui.row(a);
-        big.setGravity(android.view.Gravity.BOTTOM);
-        TextView n = Ui.left(a, String.valueOf((week.seconds + 59) / 60), 40, Ui.WHITE);
-        n.setTypeface(Typeface.DEFAULT_BOLD);
-        big.addView(n);
-        TextView u = Ui.left(a, " min", 16, Ui.MUTED);
-        u.setPadding(0, 0, 0, Ui.dp(a, 8));
-        big.addView(u);
-        card.addView(big);
-        String line = week.opens + " opens · went back " + week.skips + (week.skips == 1 ? " time" : " times")
-                + (week.videos > 0 ? " · " + week.videos + " videos" : "");
-        card.addView(Ui.left(a, line, 14, Ui.MUTED));
+
+        LinearLayout top = Ui.row(a);
+        top.addView(Ui.overline(a, "Last 7 days", Ui.SKY), Ui.grow());
         if (before.any) {
             int diff = (before.seconds - week.seconds + 30) / 60;
-            String s = diff > 0 ? "▼ " + diff + " min less than the week before"
-                    : diff < 0 ? "▲ " + -diff + " min more than the week before" : "Same as the week before";
-            String fg = diff > 0 ? Ui.GREEN : diff < 0 ? Ui.RED : Ui.MUTED;
-            String bg = diff > 0 ? "#163A2A" : diff < 0 ? "#3A1C1F" : Ui.CARD;
-            TextView pill = Ui.text(a, s, 13, fg);
-            pill.setBackground(Ui.round(a, bg, 14));
-            pill.setPadding(Ui.dp(a, 12), Ui.dp(a, 6), Ui.dp(a, 12), Ui.dp(a, 6));
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
-            lp.topMargin = Ui.dp(a, 12);
-            card.addView(pill, lp);
+            if (diff > 0) top.addView(Ui.badge(a, "▼ " + diff + " min", Ui.GREEN, Ui.GREEN_BOX));
+            else if (diff < 0) top.addView(Ui.badge(a, "▲ " + -diff + " min", Ui.RED, Ui.RED_BOX));
+            else top.addView(Ui.badge(a, "Same", Ui.MUTED, Ui.SURF2));
+        }
+        card.addView(top, Ui.wide());
+        card.addView(Ui.space(a, 10));
+
+        LinearLayout big = Ui.row(a);
+        big.setGravity(android.view.Gravity.BOTTOM);
+        big.addView(Ui.number(a, String.valueOf((week.seconds + 59) / 60), 52, Ui.WHITE));
+        TextView u = Ui.left(a, " min", 18, Ui.MUTED);
+        u.setPadding(0, 0, 0, Ui.dp(a, 6));
+        big.addView(u);
+        card.addView(big);
+        card.addView(Ui.left(a, before.any ? "compared with the week before" : "on short videos and limited apps",
+                13, Ui.MUTED));
+        card.addView(Ui.space(a, 16));
+
+        android.view.View line = new android.view.View(a);
+        line.setBackgroundColor(android.graphics.Color.parseColor("#1F3B52"));
+        card.addView(line, new LinearLayout.LayoutParams(-1, 1));
+        card.addView(Ui.space(a, 14));
+        LinearLayout nums = Ui.row(a);
+        nums.addView(heroNum(a, String.valueOf(week.skips), "went back", Ui.GREEN), Ui.grow());
+        nums.addView(heroNum(a, String.valueOf(week.opens), "opened", Ui.WHITE), Ui.grow());
+        int avg = (week.seconds + 59) / 60 / 7;
+        nums.addView(heroNum(a, String.valueOf(avg), "min a day", Ui.WHITE), Ui.grow());
+        card.addView(nums, Ui.wide());
+
+        int tries = week.skips + week.opens;
+        if (tries > 0) {
+            card.addView(Ui.space(a, 14));
+            int pct = Math.round(100f * week.skips / tries);
+            String msg = pct >= 50 ? "The pause won " + pct + "% of the time. That's real self-control."
+                    : pct > 0 ? "You went back " + pct + "% of the time. Each one counts."
+                    : "Next time, try \"Go back\" once. It gets easier.";
+            card.addView(Ui.left(a, msg, 14, Ui.SKY_SOFT));
         }
         return card;
     }
 
+    private static LinearLayout heroNum(Context a, String big, String small, String color) {
+        LinearLayout c = Ui.column(a);
+        TextView n = Ui.number(a, big, 22, color);
+        n.setGravity(android.view.Gravity.START);
+        c.addView(n);
+        c.addView(Ui.space(a, 4));
+        c.addView(Ui.left(a, small, 12, Ui.MUTED));
+        return c;
+    }
+
     /** Bar chart of minutes over the last 7 days, oldest left, today in sky blue. */
     private static void addChart(Activity a, MainActivity m, SharedPreferences p, LinearLayout root) {
-        root.addView(m.section("Minutes per day"));
         Calendar c = Clock.calendar(a);
         c.add(Calendar.DAY_OF_YEAR, -6);
         int[] mins = new int[7];
         String[] labels = new String[7];
-        SimpleDateFormat f = new SimpleDateFormat("EEEEE", Locale.US);
+        SimpleDateFormat f = new SimpleDateFormat("EEE", Locale.US);
         int max = 1;
         for (int i = 0; i < 7; i++) {
             mins[i] = (day(p, dayKey(c)).seconds + 59) / 60;
-            labels[i] = f.format(c.getTime());
+            labels[i] = i == 6 ? "Today" : f.format(c.getTime());
             max = Math.max(max, mins[i]);
             c.add(Calendar.DAY_OF_YEAR, 1);
         }
-        LinearLayout box = Ui.column(a);
-        box.setBackground(Ui.round(a, Ui.CARD, 20));
-        int pad = Ui.dp(a, 16);
-        box.setPadding(pad, pad, pad, pad);
+        root.addView(m.section("Minutes per day"));
+        LinearLayout box = Ui.card(a);
+        box.setPadding(Ui.dp(a, 12), Ui.dp(a, 18), Ui.dp(a, 12), Ui.dp(a, 14));
         LinearLayout bars = Ui.row(a);
         bars.setGravity(android.view.Gravity.BOTTOM);
-        int h = Ui.dp(a, 110);
+        int h = Ui.dp(a, 120);
         for (int i = 0; i < 7; i++) {
+            boolean today = i == 6;
             LinearLayout col = Ui.column(a);
             col.setGravity(android.view.Gravity.BOTTOM | android.view.Gravity.CENTER_HORIZONTAL);
-            col.addView(Ui.text(a, mins[i] > 0 ? String.valueOf(mins[i]) : "", 11, Ui.MUTED));
+            TextView v = Ui.text(a, mins[i] > 0 ? String.valueOf(mins[i]) : "", 11, today ? Ui.SKY : Ui.MUTED);
+            v.setFontFeatureSettings("tnum");
+            v.setTypeface(Ui.weight(today ? 600 : 400));
+            col.addView(v);
             android.view.View bar = new android.view.View(a);
-            bar.setBackground(Ui.round(a, i == 6 ? Ui.SKY : "#3B4A60", 6));
-            int bh = mins[i] == 0 ? Ui.dp(a, 3) : Math.max(Ui.dp(a, 6), h * mins[i] / max);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(Ui.dp(a, 18), bh);
-            lp.topMargin = Ui.dp(a, 4);
+            bar.setBackground(Ui.round(a, today ? Ui.SKY : mins[i] == 0 ? Ui.SURF2 : Ui.LINE2, 8));
+            int bh = mins[i] == 0 ? Ui.dp(a, 4) : Math.max(Ui.dp(a, 8), h * mins[i] / max);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(Ui.dp(a, 24), bh);
+            lp.topMargin = Ui.dp(a, 6);
+            lp.bottomMargin = Ui.dp(a, 8);
             col.addView(bar, lp);
-            col.addView(Ui.text(a, labels[i], 12, i == 6 ? Ui.SKY : "#6B7280"));
-            bars.addView(col, new LinearLayout.LayoutParams(0, h + Ui.dp(a, 40), 1f));
+            TextView l = Ui.text(a, labels[i], 11, today ? Ui.SKY : Ui.DIM);
+            l.setTypeface(Ui.weight(today ? 600 : 400));
+            col.addView(l);
+            bars.addView(col, new LinearLayout.LayoutParams(0, h + Ui.dp(a, 48), 1f));
         }
         box.addView(bars, Ui.wide());
         root.addView(box, Ui.wide());
     }
 
-    private static LinearLayout tile(Context a, String big, String small) {
-        LinearLayout box = Ui.column(a);
-        box.setBackground(Ui.round(a, Ui.CARD, 16));
-        int pad = Ui.dp(a, 12);
-        box.setPadding(pad, Ui.dp(a, 14), pad, Ui.dp(a, 14));
-        TextView n = Ui.text(a, big, 24, Ui.WHITE);
-        n.setTypeface(Typeface.DEFAULT_BOLD);
+    private static LinearLayout tile(Context a, String big, String small, String color) {
+        LinearLayout box = Ui.card(a);
+        box.setPadding(Ui.dp(a, 16), Ui.dp(a, 14), Ui.dp(a, 16), Ui.dp(a, 14));
+        TextView n = Ui.number(a, big, 28, color);
+        n.setGravity(android.view.Gravity.START);
         box.addView(n);
-        box.addView(Ui.text(a, small, 12, Ui.MUTED));
-        LinearLayout wrap = Ui.column(a);
-        int g = Ui.dp(a, 3);
-        wrap.setPadding(g, 0, g, 0);
-        wrap.addView(box);
-        return wrap;
+        box.addView(Ui.space(a, 4));
+        box.addView(Ui.left(a, small, 13, Ui.MUTED));
+        return box;
     }
 }

@@ -6,7 +6,6 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Color;
-import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
@@ -129,8 +128,8 @@ public class MainActivity extends Activity {
         LinearLayout head = Ui.row(this);
         head.addView(section("Your limits"), Ui.grow());
         TextView addTop = Ui.text(this, "+ Add", 14, Ui.SKY);
-        addTop.setTypeface(Typeface.DEFAULT_BOLD);
-        addTop.setPadding(Ui.dp(this, 12), Ui.dp(this, 20), 0, Ui.dp(this, 8));
+        addTop.setTypeface(Ui.weight(600));
+        addTop.setPadding(Ui.dp(this, 12), Ui.dp(this, 28), Ui.dp(this, 4), Ui.dp(this, 10));
         addTop.setOnClickListener(v -> picker());
         head.addView(addTop);
         root.addView(head, Ui.wide());
@@ -139,27 +138,27 @@ public class MainActivity extends Activity {
         // Dashed "add" card, like an empty slot.
         LinearLayout add = Ui.row(this);
         GradientDrawable ab = Ui.round(this, Ui.BG, 20);
-        ab.setStroke(Ui.dp(this, 2), Color.parseColor(Ui.LINE), Ui.dp(this, 8), Ui.dp(this, 6));
+        ab.setStroke(Ui.dp(this, 1), Color.parseColor(Ui.LINE2), Ui.dp(this, 6), Ui.dp(this, 5));
         add.setBackground(ab);
-        int ap = Ui.dp(this, 16);
+        int ap = Ui.dp(this, 14);
         add.setPadding(ap, ap, ap, ap);
-        TextView plus = Ui.text(this, "+", 24, Ui.BG);
-        plus.setTypeface(Typeface.DEFAULT_BOLD);
-        plus.setBackground(Ui.round(this, Ui.SKY, 14));
+        TextView plus = Ui.text(this, "+", 22, Ui.SKY);
+        plus.setTypeface(Ui.weight(500));
+        plus.setBackground(Ui.round(this, Ui.SKY_BOX, 14));
         add.addView(plus, new LinearLayout.LayoutParams(Ui.dp(this, 44), Ui.dp(this, 44)));
         add.addView(Ui.space(this, 0), new LinearLayout.LayoutParams(Ui.dp(this, 14), 1));
         LinearLayout ac = Ui.column(this);
-        TextView at = Ui.left(this, "Add apps or a group", 16, Ui.WHITE);
-        at.setTypeface(Typeface.DEFAULT_BOLD);
-        ac.addView(at);
+        ac.addView(Ui.title(this, "Add apps or a group", 16));
         ac.addView(Ui.left(this, "Social, games, news… or make your own", 13, Ui.MUTED));
         add.addView(ac, Ui.grow());
         add.setOnClickListener(v -> picker());
+        Ui.press(add);
         root.addView(add, card());
         show(root);
+        Ui.enter(root);
     }
 
-    /** Top card on Home when setup is done: status, today at a glance, a kind line, Focus now. */
+    /** Top of Home when setup is done: today's minutes as one big number, wins, streak, Focus. */
     void hero(LinearLayout root) {
         Limits limits = new Limits(this);
         android.content.SharedPreferences p = getSharedPreferences("limits", MODE_PRIVATE);
@@ -167,107 +166,108 @@ public class MainActivity extends Activity {
         int streak = Stats.streak(this, p);
         LinearLayout box = Ui.column(this);
         GradientDrawable hb = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{Color.parseColor("#17324A"), Color.parseColor("#141B26")});
-        hb.setCornerRadius(Ui.dp(this, 24));
-        hb.setStroke(Ui.dp(this, 1), Color.parseColor("#23405A"));
+                new int[]{Color.parseColor("#13324A"), Color.parseColor(Ui.SURF1)});
+        hb.setCornerRadius(Ui.dp(this, 28));
+        hb.setStroke(Ui.dp(this, 1), Color.parseColor("#1F3B52"));
         box.setBackground(hb);
-        int hp = Ui.dp(this, 18);
+        int hp = Ui.dp(this, 20);
         box.setPadding(hp, hp, hp, hp);
 
-        TextView status = Ui.left(this, Setup.rooted(this) ? "Protection on · root watchdog"
-                : "Protection on", 13, Ui.GREEN);
-        status.setTypeface(Typeface.DEFAULT_BOLD);
-        status.setCompoundDrawablePadding(Ui.dp(this, 8));
+        LinearLayout top = Ui.row(this);
+        TextView status = Ui.badge(this, Setup.rooted(this) ? "Protected · root" : "Protected", Ui.GREEN, Ui.GREEN_BOX);
+        status.setCompoundDrawablePadding(Ui.dp(this, 6));
         status.setCompoundDrawablesRelative(dot(Ui.GREEN), null, null, null);
-        GradientDrawable sb = Ui.round(this, "#14301F", 20);
-        status.setBackground(sb);
-        status.setPadding(Ui.dp(this, 12), Ui.dp(this, 6), Ui.dp(this, 12), Ui.dp(this, 6));
-        box.addView(status, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT));
-        box.addView(Ui.space(this, 14));
+        top.addView(status);
+        top.addView(new View(this), Ui.grow());
+        if (streak > 0) top.addView(Ui.badge(this, streak == 1 ? "1 day streak" : streak + " day streak",
+                Ui.AMBER, Ui.AMBER_BOX));
+        box.addView(top, Ui.wide());
+        box.addView(Ui.space(this, 18));
 
+        LinearLayout big = Ui.row(this);
+        big.setGravity(Gravity.BOTTOM);
+        TextView n = Ui.number(this, String.valueOf((t.seconds + 59) / 60), 52, Ui.WHITE);
+        big.addView(n);
+        TextView unit = Ui.left(this, " min", 18, Ui.MUTED);
+        unit.setPadding(0, 0, 0, Ui.dp(this, 6));
+        big.addView(unit);
+        box.addView(big);
+        box.addView(Ui.left(this, "on short videos and limited apps today", 13, Ui.MUTED));
+        box.addView(Ui.space(this, 16));
+
+        View line = new View(this);
+        line.setBackgroundColor(Color.parseColor("#1F3B52"));
+        box.addView(line, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1));
+        box.addView(Ui.space(this, 14));
         LinearLayout nums = Ui.row(this);
-        String[][] tiles = {{String.valueOf((t.seconds + 59) / 60), "min today"},
-                {String.valueOf(t.skips), "went back"}, {String.valueOf(streak), "day streak"}};
-        for (int i = 0; i < tiles.length; i++) {
-            LinearLayout.LayoutParams tl = Ui.grow();
-            if (i > 0) tl.leftMargin = Ui.dp(this, 8);
-            nums.addView(heroNum(tiles[i][0], tiles[i][1]), tl);
-        }
+        nums.addView(heroNum(String.valueOf(t.skips), "went back", Ui.GREEN), Ui.grow());
+        nums.addView(heroNum(String.valueOf(t.opens), "opened", Ui.WHITE), Ui.grow());
+        nums.addView(heroNum(String.valueOf(Stats.weekSkips(this)), "wins this week", Ui.SKY), Ui.grow());
         box.addView(nums, Ui.wide());
         box.addView(Ui.space(this, 14));
 
-        String kind = t.opens == 0 ? "No short videos today. Keep it up."
-                : t.skips > 0 ? "You went back " + t.skips + " times today. Well done."
-                : streak > 1 ? streak + " days in a row without extending."
+        String kind = t.opens == 0 && t.skips == 0 ? "Nothing opened yet today. Nice start."
+                : t.skips > t.opens ? "You chose to go back more than you opened. Well done."
+                : t.skips > 0 ? "Every time you went back was a win."
                 : "Every pause is a choice. You are doing fine.";
-        box.addView(Ui.left(this, kind, 14, Ui.MUTED));
+        box.addView(Ui.left(this, kind, 14, Ui.SKY_SOFT));
         LinearLayout.LayoutParams bp = Ui.wide();
-        bp.bottomMargin = Ui.dp(this, 10);
+        bp.bottomMargin = Ui.dp(this, 12);
         root.addView(box, bp);
 
-        // Focus now: its own card under the hero.
+        // Focus now: one choice + one clear button.
         LinearLayout fc = Ui.card(this);
         if (limits.inFocus()) {
             long left = (limits.focusUntil() - limits.now() + 59_999) / 60_000;
-            TextView f = Ui.left(this, "Focus session until " + Limits.hhmm(limits.focusUntil()), 17, Ui.SKY);
-            f.setTypeface(Typeface.DEFAULT_BOLD);
-            fc.addView(f);
+            LinearLayout fh = Ui.row(this);
+            fh.addView(Ui.title(this, "Focusing", 17), Ui.grow());
+            fh.addView(Ui.badge(this, "until " + Limits.hhmm(limits.focusUntil()), Ui.SKY, Ui.SKY_BOX));
+            fc.addView(fh, Ui.wide());
+            fc.addView(Ui.space(this, 4));
             fc.addView(Ui.left(this, left + " min left. Every limit is closed.", 13, Ui.MUTED));
-            fc.addView(Ui.space(this, 10));
+            fc.addView(Ui.space(this, 12));
             long total = Math.max(1, limits.focusUntil() - limits.focusStart());
             float done = 1f - (limits.focusUntil() - limits.now()) / (float) total;
             fc.addView(bar(Math.max(0f, Math.min(1f, done)), Ui.SKY), new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(this, 6)));
         } else {
-            LinearLayout fh = Ui.row(this);
-            TextView fi = Ui.text(this, "◎", 20, Ui.SKY);
-            fi.setBackground(Ui.round(this, "#16303F", 12));
-            fh.addView(fi, new LinearLayout.LayoutParams(Ui.dp(this, 40), Ui.dp(this, 40)));
-            fh.addView(Ui.space(this, 0), new LinearLayout.LayoutParams(Ui.dp(this, 12), 1));
-            LinearLayout ft = Ui.column(this);
-            TextView f = Ui.left(this, "Focus now", 17, Ui.WHITE);
-            f.setTypeface(Typeface.DEFAULT_BOLD);
-            ft.addView(f);
-            ft.addView(Ui.left(this, "Close every limit for a while. Can't be undone.", 13, Ui.MUTED));
-            fh.addView(ft, Ui.grow());
-            fc.addView(fh, Ui.wide());
-            fc.addView(Ui.space(this, 12));
-            LinearLayout row = Ui.row(this);
+            fc.addView(Ui.title(this, "Focus now", 17));
+            fc.addView(Ui.space(this, 2));
+            fc.addView(Ui.left(this, "Close every limit for a while. You can't end it early.", 13, Ui.MUTED));
+            fc.addView(Ui.space(this, 14));
             int[] mins = {30, 60, 120};
             String[] names = {"30 min", "1 hour", "2 hours"};
-            for (int i = 0; i < mins.length; i++) {
-                int m = mins[i];
-                String name = names[i];
-                TextView b = Ui.chip(this, name, false);
-                b.setTextColor(Color.parseColor(Ui.SKY));
-                b.setTypeface(Typeface.DEFAULT_BOLD);
-                b.setPadding(0, Ui.dp(this, 10), 0, Ui.dp(this, 10));
-                b.setOnClickListener(v -> new android.app.AlertDialog.Builder(this)
-                        .setTitle(L.t(this, "Focus for " + name + "?"))
+            final int[] pick = {1};
+            Button go = Ui.pill(this, "Focus for 1 hour");
+            fc.addView(Ui.segmented(this, names, 1, i -> {
+                pick[0] = i;
+                go.setText(L.t(this, "Focus for " + names[i]));
+            }), Ui.wide());
+            fc.addView(Ui.space(this, 10));
+            go.setOnClickListener(v -> {
+                int m = mins[pick[0]];
+                new android.app.AlertDialog.Builder(this)
+                        .setTitle(L.t(this, "Focus for " + names[pick[0]] + "?"))
                         .setMessage(L.t(this, "Shorts, Reels and every app you added stay closed until "
                                 + Limits.hhmm(limits.now() + m * 60_000L) + ". You can't end it early."))
                         .setPositiveButton(L.t(this, "Start"), (d, w) -> {
                             limits.startFocus(m);
+                            Ui.buzz(v, android.view.HapticFeedbackConstants.CONFIRM);
                             home();
                         })
-                        .setNegativeButton(L.t(this, "Cancel"), null).show());
-                LinearLayout.LayoutParams bl = Ui.grow();
-                if (i > 0) bl.leftMargin = Ui.dp(this, 8);
-                row.addView(b, bl);
-            }
-            fc.addView(row, Ui.wide());
+                        .setNegativeButton(L.t(this, "Cancel"), null).show();
+            });
+            fc.addView(go, Ui.wide());
         }
-        root.addView(fc, bp);
+        root.addView(fc, Ui.wide());
     }
 
-    private LinearLayout heroNum(String big, String small) {
+    private LinearLayout heroNum(String big, String small, String color) {
         LinearLayout c = Ui.column(this);
-        c.setBackground(Ui.round(this, "#0F1A24", 16));
-        c.setPadding(Ui.dp(this, 12), Ui.dp(this, 10), Ui.dp(this, 8), Ui.dp(this, 10));
-        TextView n = Ui.left(this, big, 26, Ui.WHITE);
-        n.setTypeface(Typeface.DEFAULT_BOLD);
+        TextView n = Ui.number(this, big, 22, color);
+        n.setGravity(Gravity.START);
         c.addView(n);
+        c.addView(Ui.space(this, 4));
         c.addView(Ui.left(this, small, 12, Ui.MUTED));
         return c;
     }
@@ -276,7 +276,7 @@ public class MainActivity extends Activity {
         GradientDrawable g = new GradientDrawable();
         g.setShape(GradientDrawable.OVAL);
         g.setColor(Color.parseColor(color));
-        int d = Ui.dp(this, 8);
+        int d = Ui.dp(this, 7);
         g.setSize(d, d);
         g.setBounds(0, 0, d, d);
         return g;
@@ -323,8 +323,8 @@ public class MainActivity extends Activity {
             ver = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception ignored) {
         }
-        root.addView(Ui.text(this, Flavor.PLAY ? "Unswipe " + ver : "Focus Guard " + ver, 12, "#6B7280"));
-        root.addView(Ui.text(this, "No internet access. Nothing leaves this phone.", 12, "#6B7280"));
+        root.addView(Ui.text(this, Flavor.PLAY ? "Unswipe " + ver : "Focus Guard " + ver, 12, Ui.DIM));
+        root.addView(Ui.text(this, "No internet access. Nothing leaves this phone.", 12, Ui.DIM));
         show(root);
     }
 
@@ -342,7 +342,7 @@ public class MainActivity extends Activity {
             row.addView(v);
         }
         if (click != null) {
-            row.addView(icon(R.drawable.ic_chevron, "#6B7280", 18));
+            row.addView(icon(R.drawable.ic_chevron, Ui.DIM, 18));
             row.setOnClickListener(v -> click.run());
         }
         return row;
@@ -351,7 +351,7 @@ public class MainActivity extends Activity {
     /** Thin line between rows of a {@link #group}. */
     View divider() {
         View d = new View(this);
-        d.setBackgroundColor(Color.parseColor("#2B3648"));
+        d.setBackgroundColor(Color.parseColor(Ui.LINE));
         d.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1));
         return d;
     }
@@ -359,55 +359,61 @@ public class MainActivity extends Activity {
     private View targetCard(String cat) {
         Config c = limits.config(cat);
         LinearLayout box = Ui.card(this);
+        box.setPadding(Ui.dp(this, 14), Ui.dp(this, 14), Ui.dp(this, 16), Ui.dp(this, 14));
 
         LinearLayout row = Ui.row(this);
         View ic = iconView(cat);
         FrameLayout sq = new FrameLayout(this);
-        sq.setBackground(Ui.round(this, "#111827", 14));
-        int ip = Ui.dp(this, 6);
+        sq.setBackground(Ui.round(this, Ui.SURF2, 14));
+        int ip = Ui.dp(this, 7);
         sq.setPadding(ip, ip, ip, ip);
         sq.addView(ic, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT));
-        row.addView(sq, new LinearLayout.LayoutParams(Ui.dp(this, 48), Ui.dp(this, 48)));
+        if (!c.enabled) sq.setAlpha(0.45f);
+        row.addView(sq, new LinearLayout.LayoutParams(Ui.dp(this, 46), Ui.dp(this, 46)));
         row.addView(Ui.space(this, 0), new LinearLayout.LayoutParams(Ui.dp(this, 14), 1));
 
         LinearLayout col = Ui.column(this);
-        TextView name = Ui.left(this, Limits.label(this, cat), 17, c.enabled ? Ui.WHITE : Ui.MUTED);
-        name.setTypeface(Typeface.DEFAULT_BOLD);
+        TextView name = Ui.title(this, Limits.label(this, cat), 16);
+        if (!c.enabled) name.setTextColor(Color.parseColor(Ui.MUTED));
         col.addView(name);
         String tag;
         if (Targets.isGroup(cat)) {
             int n = Targets.groupApps(this, cat).size();
-            tag = "Group · " + (n == 1 ? "1 app" : n + " apps");
-        } else tag = "whole".equals(c.mode) || Targets.wholeOnly(cat) ? "Whole app" : "Shorts / Reels only";
-        col.addView(Ui.left(this, tag + " · " + c.opens + " × " + c.openMin + " min", 13, Ui.MUTED));
-        row.addView(col, Ui.grow());
-
-        // Status pill.
-        String pill, color, fill;
-        if (!c.enabled) { pill = "Off"; color = Ui.DIM; fill = "#1A2230"; }
-        else if (limits.isUnlocked(cat)) { pill = "Open now"; color = Ui.GREEN; fill = "#14301F"; }
-        else if (limits.hardBlock(cat) != null || limits.left(cat) == 0) { pill = "Closed"; color = Ui.RED; fill = "#3A1A1E"; }
-        else { pill = limits.left(cat) + " left"; color = Ui.SKY; fill = "#16303F"; }
-        TextView pt = Ui.text(this, pill, 12, color);
-        pt.setTypeface(Typeface.DEFAULT_BOLD);
-        pt.setBackground(Ui.round(this, fill, 20));
-        pt.setPadding(Ui.dp(this, 10), Ui.dp(this, 5), Ui.dp(this, 10), Ui.dp(this, 5));
-        row.addView(pt);
-        box.addView(row);
-
+            tag = n == 1 ? "1 app" : n + " apps";
+        } else tag = "facebook".equals(cat) ? "Website" : "whole".equals(c.mode) || Targets.wholeOnly(cat) ? "Whole app" : "Shorts / Reels";
         int used = limits.used(cat), total = limits.total(cat);
-        if (c.enabled && limits.hardBlock(cat) != null) {
-            box.addView(Ui.space(this, 10));
-            box.addView(Ui.left(this, "Closed: " + limits.hardBlock(cat), 13, Ui.RED));
-        } else if (c.enabled && total > 0) {
-            box.addView(Ui.space(this, 14));
-            box.addView(segBar(used, total), new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(this, 6)));
-            box.addView(Ui.space(this, 6));
-            box.addView(Ui.left(this, "Opened " + used + " of " + total + " today", 12, Ui.DIM));
+        boolean closed = c.enabled && (limits.hardBlock(cat) != null || limits.left(cat) == 0);
+        String sub = !c.enabled ? tag + " · paused"
+                : limits.hardBlock(cat) != null ? "Closed: " + limits.hardBlock(cat)
+                : closed ? "Back at midnight"
+                : tag + " · " + c.openMin + " min each";
+        col.addView(Ui.left(this, sub, 13, closed ? Ui.RED : Ui.MUTED));
+        if (c.enabled && !closed && total > 0) {
+            col.addView(Ui.space(this, 8));
+            col.addView(segBar(used, total), new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(this, 4)));
         }
+        row.addView(col, Ui.grow());
+        row.addView(Ui.space(this, 0), new LinearLayout.LayoutParams(Ui.dp(this, 12), 1));
+
+        // Right side: opens left as a number, or a status badge.
+        if (!c.enabled) row.addView(Ui.badge(this, "Off", Ui.DIM, Ui.SURF2));
+        else if (limits.isUnlocked(cat)) row.addView(Ui.badge(this, "Open now", Ui.GREEN, Ui.GREEN_BOX));
+        else if (closed) row.addView(Ui.badge(this, "Closed", Ui.RED, Ui.RED_BOX));
+        else {
+            LinearLayout r = Ui.column(this);
+            r.setGravity(Gravity.END);
+            TextView n = Ui.number(this, String.valueOf(limits.left(cat)), 22, Ui.SKY);
+            r.addView(n, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT));
+            r.addView(Ui.text(this, "left", 11, Ui.DIM), new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+            row.addView(r);
+        }
+        box.addView(row);
         box.setOnClickListener(v -> edit(cat));
+        Ui.press(box);
         return box;
     }
 
@@ -418,10 +424,10 @@ public class MainActivity extends Activity {
         LinearLayout r = Ui.row(this);
         for (int i = 0; i < total; i++) {
             View s = new View(this);
-            s.setBackground(Ui.round(this, i < used ? color : "#2B3648", 3));
+            s.setBackground(Ui.round(this, i < used ? color : Ui.SURF3, 2));
             LinearLayout.LayoutParams l = new LinearLayout.LayoutParams(0,
                     LinearLayout.LayoutParams.MATCH_PARENT, 1f);
-            if (i > 0) l.leftMargin = Ui.dp(this, 4);
+            if (i > 0) l.leftMargin = Ui.dp(this, 3);
             r.addView(s, l);
         }
         return r;
@@ -430,7 +436,7 @@ public class MainActivity extends Activity {
     /** Horizontal progress bar filled to {@code f} (0..1). */
     private View bar(float f, String color) {
         LinearLayout track = Ui.row(this);
-        track.setBackground(Ui.round(this, "#2B3648", 3));
+        track.setBackground(Ui.round(this, Ui.SURF3, 3));
         View fill = new View(this);
         fill.setBackground(Ui.round(this, color, 3));
         track.addView(fill, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, f));
@@ -455,12 +461,9 @@ public class MainActivity extends Activity {
             }
         }
         String name = Limits.label(this, cat);
-        TextView t = Ui.text(this, name.isEmpty() ? "?" : name.substring(0, 1), 18, Ui.BG);
-        t.setTypeface(Typeface.DEFAULT_BOLD);
-        GradientDrawable g = new GradientDrawable();
-        g.setShape(GradientDrawable.OVAL);
-        g.setColor(Color.parseColor(Ui.SKY));
-        t.setBackground(g);
+        TextView t = Ui.text(this, name.isEmpty() ? "?" : name.substring(0, 1), 17, Ui.SKY);
+        t.setTypeface(Ui.weight(700));
+        t.setBackground(Ui.round(this, Ui.SKY_BOX, 10));
         return t;
     }
 
@@ -488,11 +491,11 @@ public class MainActivity extends Activity {
             TextView n = Ui.text(this, apps.size() == 1 ? "1 app" : apps.size() + " apps", 13, Ui.MUTED);
             n.setPadding(Ui.dp(this, 8), 0, Ui.dp(this, 4), 0);
             box.addView(n);
-            box.addView(icon(R.drawable.ic_chevron, "#6B7280", 20));
+            box.addView(icon(R.drawable.ic_chevron, Ui.DIM, 20));
             box.setOnClickListener(v -> builder(cat, Targets.groupName(this, cat), apps, false));
             root.addView(box, card());
             TextView hint = Ui.left(this, "Tap to rename or change the apps. All apps in the group share one pause and one opens count.",
-                    12, "#6B7280");
+                    12, Ui.DIM);
             root.addView(hint);
             root.addView(Ui.space(this, 8));
         }
@@ -501,14 +504,14 @@ public class MainActivity extends Activity {
         LinearLayout prev = Ui.column(this);
         android.graphics.drawable.GradientDrawable pg = new android.graphics.drawable.GradientDrawable(
                 android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
-                new int[]{Color.parseColor("#17324A"), Color.parseColor("#141B26")});
+                new int[]{Color.parseColor("#13324A"), Color.parseColor(Ui.SURF1)});
         pg.setCornerRadius(Ui.dp(this, 20));
-        pg.setStroke(Ui.dp(this, 1), Color.parseColor("#23405A"));
+        pg.setStroke(Ui.dp(this, 1), Color.parseColor("#1F3B52"));
         prev.setBackground(pg);
         int pp = Ui.dp(this, 16);
         prev.setPadding(pp, pp, pp, pp);
         TextView presetName = Ui.left(this, "", 12, Ui.SKY);
-        presetName.setTypeface(Typeface.DEFAULT_BOLD);
+        presetName.setTypeface(Ui.weight(600));
         prev.addView(presetName);
         prev.addView(Ui.space(this, 8));
         LinearLayout nums = Ui.row(this);
@@ -517,7 +520,7 @@ public class MainActivity extends Activity {
         for (int i = 0; i < 3; i++) {
             LinearLayout col = Ui.column(this);
             big[i] = Ui.left(this, "", 26, Ui.WHITE);
-            big[i].setTypeface(Typeface.DEFAULT_BOLD);
+            big[i].setTypeface(Ui.weight(600));
             col.addView(big[i]);
             col.addView(Ui.left(this, caps[i], 12, Ui.MUTED));
             nums.addView(col, Ui.grow());
@@ -542,7 +545,7 @@ public class MainActivity extends Activity {
         root.addView(section("Presets"));
         String[] names = {"Gentle", "Balanced", "Strict"};
         LinearLayout presets = Ui.row(this);
-        presets.setBackground(Ui.round(this, "#161C26", 14));
+        presets.setBackground(Ui.round(this, Ui.SURF1, 14));
         int tp = Ui.dp(this, 4);
         presets.setPadding(tp, tp, tp, tp);
         TextView[] pb = new TextView[names.length];
@@ -567,7 +570,7 @@ public class MainActivity extends Activity {
                 boolean on = i == match;
                 pb[i].setBackground(on ? Ui.round(this, Ui.SKY, 11) : null);
                 pb[i].setTextColor(Color.parseColor(on ? Ui.BG : Ui.MUTED));
-                pb[i].setTypeface(on ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+                pb[i].setTypeface(Ui.weight(on ? 600 : 400));
             }
             presetName.setText(L.t(this, (match < 0 ? "Custom" : names[match]).toUpperCase()
                     + (edit.enabled ? "" : " · OFF")));
@@ -593,7 +596,7 @@ public class MainActivity extends Activity {
         LinearLayout more = Ui.row(this);
         more.setPadding(0, Ui.dp(this, 18), 0, Ui.dp(this, 6));
         TextView moreT = Ui.left(this, L.t(this, "More settings").toUpperCase(), 13, Ui.SKY);
-        moreT.setTypeface(Typeface.DEFAULT_BOLD);
+        moreT.setTypeface(Ui.weight(600));
         more.addView(moreT, Ui.grow());
         ImageView chev = icon(R.drawable.ic_chevron, Ui.SKY, 20);
         chev.setRotation(editAdvanced ? 270 : 90);
@@ -705,9 +708,9 @@ public class MainActivity extends Activity {
     /** Rounded card box added to root; settings rows go inside. */
     LinearLayout group(LinearLayout root) {
         LinearLayout g = Ui.column(this);
-        g.setBackground(Ui.round(this, Ui.CARD, 14));
-        int p = Ui.dp(this, 14);
-        g.setPadding(p, Ui.dp(this, 6), p, Ui.dp(this, 6));
+        g.setBackground(Ui.outlined(this, Ui.CARD, 20));
+        int p = Ui.dp(this, 16);
+        g.setPadding(p, Ui.dp(this, 4), p, Ui.dp(this, 4));
         root.addView(g, Ui.wide());
         return g;
     }
@@ -868,12 +871,12 @@ public class MainActivity extends Activity {
             t.addView(stack(sel, 3));
         } else {
             TextView g = Ui.text(this, glyph, 18, Ui.SKY);
-            g.setBackground(Ui.round(this, "#16303F", 12));
+            g.setBackground(Ui.round(this, Ui.SKY_BOX, 12));
             t.addView(g, new LinearLayout.LayoutParams(Ui.dp(this, 36), Ui.dp(this, 36)));
         }
         t.addView(Ui.space(this, 10));
         TextView n = Ui.left(this, name, 16, Ui.WHITE);
-        n.setTypeface(Typeface.DEFAULT_BOLD);
+        n.setTypeface(Ui.weight(600));
         t.addView(n);
         if (count != null) t.addView(Ui.left(this, count, 13, live ? Ui.SKY : Ui.DIM));
         t.addView(Ui.space(this, 2));
@@ -927,13 +930,13 @@ public class MainActivity extends Activity {
         }
 
         EditText search = input("", "Search apps");
-        search.setBackground(Ui.round(this, "#161C26", 24));
+        search.setBackground(Ui.round(this, Ui.SURF1, 24));
         search.setPadding(Ui.dp(this, 16), Ui.dp(this, 12), Ui.dp(this, 16), Ui.dp(this, 12));
         search.setInputType(InputType.TYPE_CLASS_TEXT);
         search.setSingleLine(true);
         Drawable lens = getDrawable(R.drawable.ic_search);
         if (lens != null) {
-            lens.setTint(Color.parseColor("#6B7280"));
+            lens.setTint(Color.parseColor(Ui.DIM));
             int d = Ui.dp(this, 20);
             lens.setBounds(0, 0, d, d);
             search.setCompoundDrawablesRelative(lens, null, null, null);
@@ -980,12 +983,12 @@ public class MainActivity extends Activity {
             label.setText(a.label);
             col.addView(label);
             if (taken != null)
-                col.addView(Ui.left(this, L.t(this, "In " + Limits.label(this, taken)), 12, "#6B7280"));
+                col.addView(Ui.left(this, L.t(this, "In " + Limits.label(this, taken)), 12, Ui.DIM));
             row.addView(col, Ui.grow());
             if (taken != null) {
                 row.setAlpha(0.45f);
             } else if (buildSingle) {
-                ImageView go = icon(R.drawable.ic_chevron, "#6B7280", 20);
+                ImageView go = icon(R.drawable.ic_chevron, Ui.DIM, 20);
                 row.addView(go);
                 row.setOnClickListener(v -> {
                     Targets.addApp(this, a.pkg);
@@ -998,9 +1001,9 @@ public class MainActivity extends Activity {
                 Runnable paint = () -> {
                     boolean on = buildSel.contains(a.pkg);
                     GradientDrawable g = Ui.round(this, on ? Ui.SKY : Ui.CARD, 13);
-                    if (!on) g.setStroke(Ui.dp(this, 2), Color.parseColor("#6B7280"));
-                    GradientDrawable rb = Ui.round(this, on ? "#16303F" : Ui.CARD, 14);
-                    if (on) rb.setStroke(Ui.dp(this, 1), Color.parseColor("#2C5A75"));
+                    if (!on) g.setStroke(Ui.dp(this, 2), Color.parseColor(Ui.DIM));
+                    GradientDrawable rb = Ui.round(this, on ? Ui.SKY_BOX : Ui.CARD, 14);
+                    if (on) rb.setStroke(Ui.dp(this, 1), Color.parseColor(Ui.SKY));
                     row.setBackground(rb);
                     box.setBackground(g);
                     Drawable d = getDrawable(R.drawable.ic_check);
@@ -1123,7 +1126,7 @@ public class MainActivity extends Activity {
         List<String> sorted = new ArrayList<>(pkgs);
         Collections.sort(sorted);
         LinearLayout box = Ui.column(this);
-        box.setBackground(Ui.round(this, "#2B3648", 12));
+        box.setBackground(Ui.round(this, Ui.SURF3, 12));
         int p = Ui.dp(this, 3);
         box.setPadding(p, p, p, p);
         LinearLayout row = null;
@@ -1161,11 +1164,9 @@ public class MainActivity extends Activity {
     LinearLayout page(String title) {
         LinearLayout root = Ui.column(this);
         int p = Ui.dp(this, 20);
-        root.setPadding(p, p, p, p);
-        TextView t = Ui.left(this, title, 26, Ui.WHITE);
-        t.setTypeface(Typeface.DEFAULT_BOLD);
-        root.addView(t);
-        root.addView(Ui.space(this, 12));
+        root.setPadding(p, Ui.dp(this, 12), p, Ui.dp(this, 28));
+        root.addView(Ui.title(this, title, 28));
+        root.addView(Ui.space(this, 16));
         return root;
     }
 
@@ -1183,23 +1184,23 @@ public class MainActivity extends Activity {
         frame.setBackgroundColor(Color.parseColor(Ui.BG));
         frame.addView(sv, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
         View line = new View(this);
-        line.setBackgroundColor(Color.parseColor(Ui.CARD));
+        line.setBackgroundColor(Color.parseColor(Ui.LINE));
         frame.addView(line, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(this, 1)));
         LinearLayout bar = Ui.row(this);
-        bar.setBackgroundColor(Color.parseColor("#131821"));
+        bar.setBackgroundColor(Color.parseColor(Ui.SURF1));
         String[][] tabs = {{"home", "Home"}, {"stats", "Stats"}, {"settings", "Settings"}};
         int[] icons = {R.drawable.ic_home, R.drawable.ic_chart, R.drawable.ic_gear};
         int ti = 0;
         for (String[] t : tabs) {
             boolean on = t[0].equals(screen);
-            String col = on ? Ui.SKY : "#6B7280";
+            String col = on ? Ui.SKY : Ui.DIM;
             LinearLayout b = Ui.column(this);
             b.setGravity(Gravity.CENTER);
             b.setPadding(0, Ui.dp(this, 8), 0, Ui.dp(this, 10));
-            ImageView ic = icon(icons[ti++], on ? Ui.BG : "#6B7280", 22);
+            ImageView ic = icon(icons[ti++], on ? Ui.SKY : Ui.DIM, 22);
             // Selected tab: icon in a sky pill, like Material 3.
             FrameLayout pill = new FrameLayout(this);
-            if (on) pill.setBackground(Ui.round(this, Ui.SKY, 16));
+            if (on) pill.setBackground(Ui.round(this, Ui.SKY_BOX, 16));
             pill.setPadding(Ui.dp(this, 18), Ui.dp(this, 4), Ui.dp(this, 18), Ui.dp(this, 4));
             pill.addView(ic, new FrameLayout.LayoutParams(Ui.dp(this, 22), Ui.dp(this, 22)));
             // Vertical LinearLayout defaults children to match_parent width; keep the pill snug.
@@ -1207,7 +1208,7 @@ public class MainActivity extends Activity {
                     LinearLayout.LayoutParams.WRAP_CONTENT));
             b.addView(Ui.space(this, 4));
             TextView label = Ui.text(this, t[1], 12, col);
-            if (on) label.setTypeface(Typeface.DEFAULT_BOLD);
+            label.setTypeface(Ui.weight(on ? 600 : 400));
             b.addView(label);
             b.setOnClickListener(v -> openTab(t[0]));
             bar.addView(b, Ui.grow());
@@ -1226,7 +1227,7 @@ public class MainActivity extends Activity {
         frame.setBackgroundColor(Color.parseColor(Ui.BG));
         frame.addView(sv, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
         LinearLayout foot = Ui.column(this);
-        foot.setBackgroundColor(Color.parseColor("#131821"));
+        foot.setBackgroundColor(Color.parseColor(Ui.SURF1));
         int p = Ui.dp(this, 16);
         foot.setPadding(p, Ui.dp(this, 12), p, Ui.dp(this, 12));
         foot.addView(footer, Ui.wide());
@@ -1236,15 +1237,14 @@ public class MainActivity extends Activity {
     }
 
     TextView section(String s) {
-        TextView t = Ui.left(this, L.t(this, s).toUpperCase(), 13, Ui.SKY);
-        t.setTypeface(Typeface.DEFAULT_BOLD);
-        t.setPadding(0, Ui.dp(this, 20), 0, Ui.dp(this, 8));
+        TextView t = Ui.overline(this, s, Ui.MUTED);
+        t.setPadding(0, Ui.dp(this, 28), 0, Ui.dp(this, 10));
         return t;
     }
 
     LinearLayout.LayoutParams card() {
         LinearLayout.LayoutParams lp = Ui.wide();
-        lp.bottomMargin = Ui.dp(this, 8);
+        lp.bottomMargin = Ui.dp(this, 10);
         return lp;
     }
 
@@ -1252,7 +1252,7 @@ public class MainActivity extends Activity {
         EditText e = new EditText(this);
         e.setText(text);
         e.setHint(L.t(this, hint));
-        e.setHintTextColor(Color.parseColor("#6B7280"));
+        e.setHintTextColor(Color.parseColor(Ui.DIM));
         e.setTextColor(Color.WHITE);
         e.setBackground(Ui.round(this, Ui.CARD, 10));
         int p = Ui.dp(this, 12);
@@ -1276,9 +1276,9 @@ public class MainActivity extends Activity {
         paint.run();
         Button minus = Ui.small(this, "−"), plus = Ui.small(this, "+");
         for (Button b : new Button[]{minus, plus}) {
-            b.setBackground(Ui.round(this, "#2B3648", 12));
+            b.setBackground(Ui.round(this, Ui.SURF3, 12));
             b.setTextColor(Color.parseColor(Ui.SKY));
-            b.setTypeface(Typeface.DEFAULT_BOLD);
+            b.setTypeface(Ui.weight(600));
         }
         minus.setOnClickListener(v -> {
             set.accept(Math.max(min, get.getAsInt() - step));

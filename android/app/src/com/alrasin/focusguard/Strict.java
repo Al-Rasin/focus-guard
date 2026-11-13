@@ -7,7 +7,6 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.Typeface;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
@@ -573,12 +572,12 @@ final class Strict {
             root.addView(Ui.space(a, 12));
             TextView w = Ui.left(a, "The volume-key accessibility shortcut can turn Focus Guard off from "
                     + "any screen. Remove it: Settings > Accessibility > Focus Guard > shortcut off.", 14, Ui.RED);
-            w.setTypeface(Typeface.DEFAULT_BOLD);
+            w.setTypeface(Ui.weight(600));
             root.addView(w);
         }
         root.addView(Ui.space(a, 12));
         root.addView(Ui.left(a, "In strict mode the screens that switch Focus Guard off (its accessibility "
-                + "page, App info, device admin, Private DNS) close as soon as they open.", 13, "#6B7280"));
+                + "page, App info, device admin, Private DNS) close as soon as they open.", 13, Ui.DIM));
         a.show(root);
     }
 }
