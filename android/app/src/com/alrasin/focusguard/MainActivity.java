@@ -132,7 +132,13 @@ public class MainActivity extends Activity {
         Setup.addStatus(this, root);
 
         List<String> on = new ArrayList<>(), off = new ArrayList<>();
-        for (String cat : Targets.all(this)) (limits.config(cat).enabled ? on : off).add(cat);
+        Set<String> hidden = Targets.hidden(this);
+        for (String cat : Targets.all(this)) {
+            boolean en = limits.config(cat).enabled;
+            if (en && hidden.contains(cat)) Targets.setHidden(this, cat, false); // turned on elsewhere
+            else if (hidden.contains(cat)) continue;
+            (en ? on : off).add(cat);
+        }
         LinearLayout head = Ui.row(this);
         head.addView(section("Your limits"), Ui.grow());
         TextView editTop = Ui.text(this, homeEditing ? "Done" : "Edit", 14, Ui.SKY);
@@ -464,17 +470,24 @@ public class MainActivity extends Activity {
 
     /** Small action in a card's right side while Home is in edit mode. */
     private View editAction(String cat, boolean enabled) {
-        TextView t;
-        if (!enabled) t = Ui.badge(this, "Turn on", Ui.SKY, Ui.SKY_BOX);
-        else if (builtin(cat)) t = Ui.badge(this, "Turn off", Ui.AMBER, Ui.AMBER_BOX);
-        else t = Ui.badge(this, "Remove", Ui.RED, Ui.RED_BOX);
+        if (!enabled) {
+            LinearLayout two = Ui.row(this);
+            two.addView(actionBadge(cat, "Turn on", Ui.SKY, Ui.SKY_BOX, () -> setOn(cat, true)));
+            View rm = actionBadge(cat, "Remove", Ui.RED, Ui.RED_BOX, () -> askRemove(cat));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
+            lp.leftMargin = Ui.dp(this, 8);
+            two.addView(rm, lp);
+            return two;
+        }
+        if (builtin(cat)) return actionBadge(cat, "Turn off", Ui.AMBER, Ui.AMBER_BOX, () -> askOff(cat));
+        return actionBadge(cat, "Remove", Ui.RED, Ui.RED_BOX, () -> askRemove(cat));
+    }
+
+    private View actionBadge(String cat, String label, String fg, String bg, Runnable act) {
+        TextView t = Ui.badge(this, label, fg, bg);
         t.setTextSize(14);
         t.setPadding(Ui.dp(this, 14), Ui.dp(this, 9), Ui.dp(this, 14), Ui.dp(this, 9));
-        t.setOnClickListener(v -> {
-            if (!enabled) setOn(cat, true);
-            else if (builtin(cat)) askOff(cat);
-            else askRemove(cat);
-        });
+        t.setOnClickListener(v -> act.run());
         Ui.press(t);
         return t;
     }
@@ -491,8 +504,8 @@ public class MainActivity extends Activity {
             if (on) askOff(cat);
             else setOn(cat, true);
         });
-        if (!builtin(cat)) {
-            items.add(L.t(this, Targets.isGroup(cat) ? "Delete group" : "Remove app"));
+        if (!builtin(cat) || !on) {
+            items.add(L.t(this, Targets.isGroup(cat) ? "Delete group" : builtin(cat) ? "Remove" : "Remove app"));
             acts.add(() -> askRemove(cat));
         }
         new android.app.AlertDialog.Builder(this)
@@ -522,6 +535,19 @@ public class MainActivity extends Activity {
     }
 
     private void askRemove(String cat) {
+        if (builtin(cat)) {
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle(L.t(this, "Remove " + Limits.label(this, cat) + "?"))
+                    .setMessage(L.t(this, "It's already off. This takes it off Home. "
+                            + "You can add it again with + Add."))
+                    .setPositiveButton(L.t(this, "Remove"), (d, w) -> {
+                        // Only reachable while turned off, so nothing gets looser: no strict delay.
+                        if (!limits.config(cat).enabled) Targets.setHidden(this, cat, true);
+                        refreshHome();
+                    })
+                    .setNegativeButton(L.t(this, "Cancel"), null).show();
+            return;
+        }
         boolean group = Targets.isGroup(cat);
         new android.app.AlertDialog.Builder(this)
                 .setTitle(L.t(this, (group ? "Delete " : "Remove ") + Limits.label(this, cat) + "?"))
@@ -926,6 +952,24 @@ public class MainActivity extends Activity {
                 14, Ui.MUTED));
         List<App> apps = installed();
         Map<String, String> owners = Targets.owners(this);
+
+        Set<String> hidden = Targets.hidden(this);
+        boolean first = true;
+        for (String cat : Limits.BUILTIN) {
+            if (!hidden.contains(cat)) continue;
+            if (first) root.addView(section("Removed from Home"));
+            first = false;
+            LinearLayout r = Ui.row(this);
+            r.setBackground(Ui.outlined(this, Ui.CARD, 20));
+            int p = Ui.dp(this, 16);
+            r.setPadding(p, p, p, p);
+            r.addView(Ui.title(this, Limits.label(this, cat), 16), Ui.grow());
+            r.addView(actionBadge(cat, "Add back", Ui.SKY, Ui.SKY_BOX, () -> {
+                Targets.setHidden(this, cat, false);
+                setOn(cat, true);
+            }));
+            root.addView(r, card());
+        }
 
         root.addView(section("Ready-made groups"));
         // Groups with apps on this phone first; empty ones stay at the end, dimmed.

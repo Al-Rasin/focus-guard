@@ -84,6 +84,21 @@ final class Targets {
                 .apply();
     }
 
+    // ---- built-ins removed from Home (only while turned off; "+ Add" brings them back) -----
+
+    private static final String HIDDEN = "hidden";
+
+    static Set<String> hidden(Context ctx) {
+        return new HashSet<>(prefs(ctx).getStringSet(HIDDEN, new HashSet<>()));
+    }
+
+    static void setHidden(Context ctx, String cat, boolean hide) {
+        Set<String> s = hidden(ctx);
+        if (hide) s.add(cat);
+        else s.remove(cat);
+        prefs(ctx).edit().putStringSet(HIDDEN, s).apply();
+    }
+
     static boolean isGroup(String cat) {
         return cat.startsWith(GROUP_PREFIX);
     }
