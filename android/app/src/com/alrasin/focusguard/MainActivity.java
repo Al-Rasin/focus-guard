@@ -41,6 +41,11 @@ public class MainActivity extends Activity {
     private String screen = "home";
     /** Last tab shown; Back from a sub-screen returns to it. */
     private String tab = "home";
+    /** Home shows Remove / Turn off on each card. */
+    private boolean homeEditing;
+    /** Last tab ScrollView, and whether the next show() keeps its scroll position (no enter animation). */
+    private ScrollView curScroll;
+    private boolean keepScroll;
     private Config edit;
     private Limits limits;
     /** The activity while it is in front (main thread only), so the service can redraw it. */
@@ -113,6 +118,7 @@ public class MainActivity extends Activity {
 
     private void openTab(String t) {
         tab = t;
+        if (!t.equals("home")) homeEditing = false;
         if (t.equals("stats")) statsTab();
         else if (t.equals("settings")) settingsTab();
         else home();
@@ -125,15 +131,32 @@ public class MainActivity extends Activity {
         LinearLayout root = page(Flavor.PLAY ? "Unswipe" : "Focus Guard");
         Setup.addStatus(this, root);
 
+        List<String> on = new ArrayList<>(), off = new ArrayList<>();
+        for (String cat : Targets.all(this)) (limits.config(cat).enabled ? on : off).add(cat);
         LinearLayout head = Ui.row(this);
         head.addView(section("Your limits"), Ui.grow());
+        TextView editTop = Ui.text(this, homeEditing ? "Done" : "Edit", 14, Ui.SKY);
+        editTop.setTypeface(Ui.weight(600));
+        editTop.setPadding(Ui.dp(this, 12), Ui.dp(this, 28), Ui.dp(this, 12), Ui.dp(this, 10));
+        editTop.setOnClickListener(v -> {
+            homeEditing = !homeEditing;
+            refreshHome();
+        });
+        head.addView(editTop);
         TextView addTop = Ui.text(this, "+ Add", 14, Ui.SKY);
         addTop.setTypeface(Ui.weight(600));
         addTop.setPadding(Ui.dp(this, 12), Ui.dp(this, 28), Ui.dp(this, 4), Ui.dp(this, 10));
         addTop.setOnClickListener(v -> picker());
         head.addView(addTop);
         root.addView(head, Ui.wide());
-        for (String cat : Targets.all(this)) root.addView(targetCard(cat), card());
+        TextView hint = Ui.left(this, homeEditing ? "Tap Remove or Turn off on anything you don't want limited."
+                : "Tap to change a limit. Hold to remove it.", 13, Ui.DIM);
+        root.addView(hint, Ui.wide());
+        for (String cat : on) root.addView(targetCard(cat), card());
+        if (!off.isEmpty()) {
+            root.addView(section("Turned off"));
+            for (String cat : off) root.addView(targetCard(cat), card());
+        }
 
         // Dashed "add" card, like an empty slot.
         LinearLayout add = Ui.row(this);
@@ -155,7 +178,7 @@ public class MainActivity extends Activity {
         Ui.press(add);
         root.addView(add, card());
         show(root);
-        Ui.enter(root);
+        if (!keepScroll) Ui.enter(root);
     }
 
     /** Top of Home when setup is done: today's minutes as one big number, wins, streak, Focus. */
@@ -397,8 +420,9 @@ public class MainActivity extends Activity {
         row.addView(col, Ui.grow());
         row.addView(Ui.space(this, 0), new LinearLayout.LayoutParams(Ui.dp(this, 12), 1));
 
-        // Right side: opens left as a number, or a status badge.
-        if (!c.enabled) row.addView(Ui.badge(this, "Off", Ui.DIM, Ui.SURF2));
+        // Right side: edit action, opens left as a number, or a status badge.
+        if (homeEditing) row.addView(editAction(cat, c.enabled));
+        else if (!c.enabled) row.addView(Ui.badge(this, "Off", Ui.DIM, Ui.SURF2));
         else if (limits.isUnlocked(cat)) row.addView(Ui.badge(this, "Open now", Ui.GREEN, Ui.GREEN_BOX));
         else if (closed) row.addView(Ui.badge(this, "Closed", Ui.RED, Ui.RED_BOX));
         else {
@@ -413,8 +437,103 @@ public class MainActivity extends Activity {
         }
         box.addView(row);
         box.setOnClickListener(v -> edit(cat));
+        box.setOnLongClickListener(v -> {
+            Ui.buzz(v, android.view.HapticFeedbackConstants.LONG_PRESS);
+            cardMenu(cat);
+            return true;
+        });
         Ui.press(box);
         return box;
+    }
+
+    /** Redraw Home in place (same scroll, no animation). */
+    private void refreshHome() {
+        if (!"home".equals(screen)) {
+            openTab("home");
+            return;
+        }
+        keepScroll = true;
+        home();
+        keepScroll = false;
+    }
+
+    /** True for the fixed targets (Shorts, Reels…): they can be turned off, not deleted. */
+    private static boolean builtin(String cat) {
+        return !cat.startsWith(Limits.APP_PREFIX) && !Targets.isGroup(cat);
+    }
+
+    /** Small action in a card's right side while Home is in edit mode. */
+    private View editAction(String cat, boolean enabled) {
+        TextView t;
+        if (!enabled) t = Ui.badge(this, "Turn on", Ui.SKY, Ui.SKY_BOX);
+        else if (builtin(cat)) t = Ui.badge(this, "Turn off", Ui.AMBER, Ui.AMBER_BOX);
+        else t = Ui.badge(this, "Remove", Ui.RED, Ui.RED_BOX);
+        t.setTextSize(14);
+        t.setPadding(Ui.dp(this, 14), Ui.dp(this, 9), Ui.dp(this, 14), Ui.dp(this, 9));
+        t.setOnClickListener(v -> {
+            if (!enabled) setOn(cat, true);
+            else if (builtin(cat)) askOff(cat);
+            else askRemove(cat);
+        });
+        Ui.press(t);
+        return t;
+    }
+
+    /** Long-press menu of a Home card. */
+    private void cardMenu(String cat) {
+        boolean on = limits.config(cat).enabled;
+        List<String> items = new ArrayList<>();
+        List<Runnable> acts = new ArrayList<>();
+        items.add(L.t(this, "Change limit"));
+        acts.add(() -> edit(cat));
+        items.add(L.t(this, on ? "Turn off" : "Turn on"));
+        acts.add(() -> {
+            if (on) askOff(cat);
+            else setOn(cat, true);
+        });
+        if (!builtin(cat)) {
+            items.add(L.t(this, Targets.isGroup(cat) ? "Delete group" : "Remove app"));
+            acts.add(() -> askRemove(cat));
+        }
+        new android.app.AlertDialog.Builder(this)
+                .setTitle(Limits.label(this, cat))
+                .setItems(items.toArray(new String[0]), (d, w) -> acts.get(w).run())
+                .show();
+    }
+
+    private String strictNote() {
+        return Strict.on(this) ? " Strict mode is on, so this waits before it takes effect." : "";
+    }
+
+    private void askOff(String cat) {
+        new android.app.AlertDialog.Builder(this)
+                .setTitle(L.t(this, "Turn off " + Limits.label(this, cat) + "?"))
+                .setMessage(L.t(this, "No pause and no limit for it. It moves to \"Turned off\", "
+                        + "where you can turn it back on." + strictNote()))
+                .setPositiveButton(L.t(this, "Turn off"), (d, w) -> setOn(cat, false))
+                .setNegativeButton(L.t(this, "Cancel"), null).show();
+    }
+
+    private void setOn(String cat, boolean on) {
+        Config c = limits.config(cat).copy();
+        c.enabled = on;
+        Toast.makeText(this, L.t(this, Strict.save(this, c)), Toast.LENGTH_LONG).show();
+        refreshHome();
+    }
+
+    private void askRemove(String cat) {
+        boolean group = Targets.isGroup(cat);
+        new android.app.AlertDialog.Builder(this)
+                .setTitle(L.t(this, (group ? "Delete " : "Remove ") + Limits.label(this, cat) + "?"))
+                .setMessage(L.t(this, (group ? "Its apps won't be limited any more." : "It won't be limited any more.")
+                        + " You can add it again with + Add." + strictNote()))
+                .setPositiveButton(L.t(this, group ? "Delete" : "Remove"), (d, w) -> {
+                    String msg = group ? Strict.removeGroup(this, cat)
+                            : Strict.removeApp(this, cat.substring(Limits.APP_PREFIX.length()));
+                    Toast.makeText(this, L.t(this, msg), Toast.LENGTH_LONG).show();
+                    refreshHome();
+                })
+                .setNegativeButton(L.t(this, "Cancel"), null).show();
     }
 
     /** Opens bar: one segment per open (up to 12), else a continuous bar. */
@@ -654,18 +773,11 @@ public class MainActivity extends Activity {
         root.addView(Ui.space(this, 24));
         if (cat.startsWith(Limits.APP_PREFIX)) {
             Button remove = Ui.button(this, "Remove this app", Ui.CARD, Ui.RED);
-            remove.setOnClickListener(v -> {
-                Toast.makeText(this, L.t(this, Strict.removeApp(this, cat.substring(Limits.APP_PREFIX.length()))),
-                        Toast.LENGTH_LONG).show();
-                openTab("home");
-            });
+            remove.setOnClickListener(v -> askRemove(cat));
             root.addView(remove, Ui.wide());
         } else if (Targets.isGroup(cat)) {
             Button remove = Ui.button(this, "Delete group", Ui.CARD, Ui.RED);
-            remove.setOnClickListener(v -> {
-                Toast.makeText(this, L.t(this, Strict.removeGroup(this, cat)), Toast.LENGTH_LONG).show();
-                openTab("home");
-            });
+            remove.setOnClickListener(v -> askRemove(cat));
             root.addView(remove, Ui.wide());
         }
         root.addView(Ui.space(this, 16));
@@ -1175,6 +1287,17 @@ public class MainActivity extends Activity {
         sv.setFillViewport(true);
         sv.setBackgroundColor(Color.parseColor(Ui.BG));
         sv.addView(root);
+        if (keepScroll && curScroll != null) {
+            int y = curScroll.getScrollY();
+            root.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+                @Override
+                public void onLayoutChange(View v, int l, int t, int r, int b, int ol, int ot, int or, int ob) {
+                    v.removeOnLayoutChangeListener(this);
+                    sv.post(() -> sv.scrollTo(0, y));
+                }
+            });
+        }
+        curScroll = sv;
         if (!isTab(screen)) {
             Ui.fitInsets(sv);
             setContentView(sv);
