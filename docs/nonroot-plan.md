@@ -157,3 +157,17 @@ keep-alive; without it, the app does it itself. No Gradle, no libraries, UI buil
   focus dialog time and emergency countdown go through it. Emulator-tested (API 36, Bangla): hero,
   focus confirm "০৯:১১", steppers "৫ সেকেন্ড"/"১৫ মিনিট"/"১৯:০০", Strict preset highlight + live
   summary, highlight drops when a value changes.
+- Remaining emulator tests (2026-11-13, API 36): backup save/load ✅; strict on (1 h, PIN) ✅,
+  App info + accessibility pages kicked ✅, stricter change instant / looser waits ✅, PIN wrong
+  rejected / right applies / cancel ✅, looser import waits ✅; emergency open (60 s, next in a
+  week) ✅; device admin on → "Uninstall blocked" ✅, deactivate-admin page kicked in strict ✅,
+  with strict off the admin's warning dialog shows and OK removes it ✅; QS tile "Protected" +
+  tap opens app ✅; widget shows status, counts, today ✅. Not tested (apps not installed):
+  Telegram, Instagram, TikTok, Facebook. Real phone not tested.
+  Fixes from these tests: Back key via `Ui.onBack` (targetSdk 36 ignores `onBackPressed`);
+  ADD_DEVICE_ADMIN started without NEW_TASK (else result lost); strict "grace" after setup
+  removed (was a bypass); settings scan walks all app windows (`scanSettings`); strict screen
+  refreshes on resume. OS limit: API 34+ marks the uninstall dialog and the deactivate-admin
+  buttons `accessibilityDataSensitive` — the service can't see them. So uninstall is only blocked
+  with device admin; the deactivate page is matched by its header "admin app is active"
+  (English only). Cosmetic: widget picker preview is just the icon; "went back 1 times".

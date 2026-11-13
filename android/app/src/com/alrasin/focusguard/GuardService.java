@@ -247,6 +247,9 @@ public class GuardService extends AccessibilityService {
             trace("skip: escaping");
             return;
         }
+        // Any visible settings window, not only the active one. (The system uninstall dialog
+        // is accessibility-data-sensitive on API 34+ and never reaches us; device admin covers it.)
+        if (guardSettings() && scanSettings()) return;
         String pkg = currentPkg();
         if (EXEMPT.contains(pkg)) {
             stepAside(pkg);
@@ -257,10 +260,7 @@ public class GuardService extends AccessibilityService {
             scanTelegram();
             return;
         }
-        if (Strict.SETTINGS.contains(pkg)) {
-            if (guardSettings()) scanSettings();
-            return;
-        }
+        if (Strict.SETTINGS.contains(pkg)) return;
         String what = detect(pkg);
         trace("scan " + pkg + " -> " + what);
         if (what == null || what.equals(ADULT)) timer.hide();
@@ -274,21 +274,27 @@ public class GuardService extends AccessibilityService {
         return !Flavor.PLAY && Strict.on(this) && !Setup.rooted(this);
     }
 
-    private void scanSettings() {
-        AccessibilityNodeInfo root = appRoot();
-        if (root == null) return;
+    /** Checks every visible settings/installer window; true if one was closed. */
+    private boolean scanSettings() {
         StringBuilder sb = new StringBuilder();
-        allText(root, sb, 0);
-        root.recycle();
-        if (!Strict.blocks(this, sb.toString())) return;
+        for (AccessibilityWindowInfo w : getWindows()) {
+            if (w.getType() != AccessibilityWindowInfo.TYPE_APPLICATION) continue;
+            AccessibilityNodeInfo r = w.getRoot();
+            if (r == null) continue;
+            CharSequence p = r.getPackageName();
+            if (p != null && Strict.SETTINGS.contains(p.toString())) allText(r, sb, 0);
+            r.recycle();
+        }
+        if (sb.length() == 0 || !Strict.blocks(this, sb.toString())) return false;
         long now = SystemClock.elapsedRealtime();
-        if (now - lastKickAt < 1500) return;
+        if (now - lastKickAt < 1500) return true;
         lastKickAt = now;
         trace("strict: settings screen closed");
         performGlobalAction(GLOBAL_ACTION_HOME);
         handler.post(() -> android.widget.Toast.makeText(this,
                 L.t(this, "Strict mode is on. Changes to Focus Guard wait " + Strict.delayH(this) + " h."),
                 android.widget.Toast.LENGTH_LONG).show());
+        return true;
     }
 
     private void allText(AccessibilityNodeInfo n, StringBuilder out, int depth) {

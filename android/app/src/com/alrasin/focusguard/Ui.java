@@ -1,5 +1,6 @@
 package com.alrasin.focusguard;
 
+import android.app.Activity;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
@@ -11,6 +12,16 @@ import android.widget.TextView;
 
 /** Small helpers for UI built in code (no layouts). Pause-screen colours. */
 final class Ui {
+    /**
+     * Back key handler. With targetSdk 36, Android 16 no longer calls onBackPressed(),
+     * so register a callback there; older versions call onBackPressed(), which should run the same code.
+     */
+    static void onBack(Activity a, Runnable r) {
+        if (android.os.Build.VERSION.SDK_INT >= 33)
+            a.getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                    android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, r::run);
+    }
+
     static final String BG = "#0E1116", SKY = "#7DD3FC", MUTED = "#AEB6C2", CARD = "#1F2937",
             WHITE = "#FFFFFF", RED = "#F87171", GREEN = "#86EFAC";
 

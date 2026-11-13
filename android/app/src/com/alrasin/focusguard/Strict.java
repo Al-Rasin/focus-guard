@@ -43,8 +43,8 @@ final class Strict {
     private static final long WEEK = 7 * 24 * 3600_000L;
     static final int EMERGENCY_WAIT_S = 60;
 
-    /** Our own settings screens (setup steps) may open for a short while, even in strict mode. */
-    private static long graceUntil;
+    /** Shown on the "activate device admin" page; marks the one settings page strict mode lets through. */
+    private static final String ADMIN_NOTE = "Stops Focus Guard from being uninstalled on a whim.";
 
     private Strict() {
     }
@@ -348,15 +348,15 @@ final class Strict {
     /** Words that mean "this screen can turn Focus Guard off", next to our name. */
     private static final String[] DANGER = {
             "force stop", "uninstall", "deactivate", "use focus guard", "stop focus guard",
-            "turn off focus guard", "clear storage", "clear data", "disable"};
-
-    static void grace() {
-        graceUntil = SystemClock.elapsedRealtime() + 90_000;
-    }
+            "turn off focus guard", "clear storage", "clear data", "disable",
+            // Deactivate-admin page: its buttons are hidden from accessibility (API 34+).
+            "admin app is active"};
 
     /** Should a settings screen with this text be left? Only in strict mode. */
     static boolean blocks(Context c, String text) {
-        if (!on(c) || SystemClock.elapsedRealtime() < graceUntil) return false;
+        if (!on(c)) return false;
+        // No time-based grace: any window of "blocking off" is a way to reach the off switch.
+        if (text.contains(ADMIN_NOTE) && !adminOn(c)) return false;
         String t = text.toLowerCase(Locale.ROOT);
         if (t.contains("private dns") && t.contains(Setup.DNS_HOST.toLowerCase(Locale.ROOT))) return true;
         if (!t.contains("focus guard")) return false;
@@ -491,11 +491,13 @@ final class Strict {
             root.addView(Ui.space(a, 8));
             Button b = Ui.small(a, "Block uninstall");
             b.setOnClickListener(v -> {
-                grace();
-                Setup.open(a, new Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
-                        .putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin(a))
-                        .putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION,
-                                "Stops Focus Guard from being uninstalled on a whim."));
+                // Not via Setup.open: Android refuses ADD_DEVICE_ADMIN started as a new task.
+                try {
+                    a.startActivity(new Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
+                            .putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin(a))
+                            .putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, ADMIN_NOTE));
+                } catch (Exception ignored) {
+                }
             });
             root.addView(b);
         }

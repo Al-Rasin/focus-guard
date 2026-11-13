@@ -74,6 +74,7 @@ Check rival claims again before using any of them in the listing (Play forbids f
 ## Other declarations
 
 - Device admin: optional, no policies, used only to make uninstall harder in strict mode.
+  Without it uninstall can't be blocked: Android 14+ hides the uninstall dialog from accessibility.
   Play may question it — be ready to drop it from the Play build (`Flavor.PLAY`).
 - `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`: allowed use (the service must stay alive); explain in
   the form if asked.

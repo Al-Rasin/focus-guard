@@ -42,6 +42,7 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         limits = new Limits(this);
+        Ui.onBack(this, this::back);
     }
 
     @Override
@@ -49,6 +50,7 @@ public class MainActivity extends Activity {
         super.onResume();
         Strict.applyDue(this);
         if (isTab(screen)) openTab(screen);
+        else if (screen.equals("strict")) strict(); // e.g. back from the device admin page
     }
 
     @Override
@@ -76,7 +78,11 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (screen.equals("home")) super.onBackPressed();
+        back();
+    }
+
+    private void back() {
+        if (screen.equals("home")) moveTaskToBack(true);
         else if (isTab(screen)) openTab("home");
         else openTab(tab);
     }

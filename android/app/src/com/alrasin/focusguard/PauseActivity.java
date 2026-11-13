@@ -55,6 +55,7 @@ public class PauseActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        Ui.onBack(this, this::goBack);
         cat = getIntent().getStringExtra("cat");
         pkg = getIntent().getStringExtra("pkg");
         if (cat == null) {
