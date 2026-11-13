@@ -677,9 +677,9 @@ public class GuardService extends AccessibilityService {
     void showOpensLeft(String cat) {
         Notification n = new Notification.Builder(this, "status")
                 .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
-                .setContentTitle(Limits.label(this, cat) + ": " + limits.left(cat) + " of "
-                        + limits.total(cat) + " opens left today")
-                .setContentText(limits.summary())
+                .setContentTitle(Limits.label(this, cat) + ": " + L.t(this, limits.left(cat) + " of "
+                        + limits.total(cat) + " opens left today"))
+                .setContentText(L.t(this, limits.summary()))
                 .setTimeoutAfter(10_000)
                 .setShowWhen(false)
                 .build();

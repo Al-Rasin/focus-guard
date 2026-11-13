@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="service_desc">Focus Guard uses this service to see which app or screen is open, so it can show a pause before YouTube Shorts, Reels, TikTok and other apps you choose, limit daily opens, and close adult websites and adult Telegram chats. Nothing is saved, sent or shared: the app has no internet access.</string>
+    <string name="widget_desc">Protection status, opens left and today\'s minutes</string>
 </resources>

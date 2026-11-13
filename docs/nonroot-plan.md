@@ -170,4 +170,4 @@ keep-alive; without it, the app does it itself. No Gradle, no libraries, UI buil
   refreshes on resume. OS limit: API 34+ marks the uninstall dialog and the deactivate-admin
   buttons `accessibilityDataSensitive` — the service can't see them. So uninstall is only blocked
   with device admin; the deactivate page is matched by its header "admin app is active"
-  (English only). Cosmetic: widget picker preview is just the icon; "went back 1 times".
+  (English only). Cosmetic fixes after: widget picker preview (`previewLayout`, API 31+) and English singular ("1 time") via `L.singular`.

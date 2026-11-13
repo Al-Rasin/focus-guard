@@ -45,7 +45,8 @@ final class L {
     }
 
     static String t(Context c, String en) {
-        if (en == null || en.isEmpty() || !bangla(c)) return en;
+        if (en == null || en.isEmpty()) return en;
+        if (!bangla(c)) return singular(en);
         String bn = EXACT.get(en);
         if (bn != null) return bn;
         for (int i = 0; i < PAT.size(); i++) {
@@ -57,6 +58,13 @@ final class L {
             return out;
         }
         return en.matches("[\\d:.,/%+\\- ]+") ? digits(en) : en;
+    }
+
+    private static final Pattern ONE = Pattern.compile("(?<![\\d.,])1 (time|open|video|minute|hour|day)s\\b");
+
+    /** English plural fix for built strings: "went back 1 times" → "went back 1 time". */
+    static String singular(String s) {
+        return s.indexOf('1') < 0 ? s : ONE.matcher(s).replaceAll("1 $1");
     }
 
     /** "01:29" → "০১:২৯": numbers filled into a pattern (times, counts) in Bangla digits. */
