@@ -1,6 +1,6 @@
 # Google Play release checklist (non-root app)
 
-Status 2026-11-12: code is Play-ready on branch `nonroot` (targetSdk 36, consent screen,
+Status 2026-11-13: code is Play-ready on main (targetSdk 36, consent screen,
 `FG_PLAY=1` build). Publishing needs the owner's decisions at the end of this file.
 
 ## Build
