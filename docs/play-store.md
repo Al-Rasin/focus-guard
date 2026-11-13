@@ -110,6 +110,7 @@ Focus, Habit tracker, Self-improvement — use what the Console offers. **Contai
 | Pause | Breathing circle, rotating question, choose open length | Fixed pause |
 | Strict mode | Delayed loosening, PIN, weekly emergency open | Simple lock or none |
 | Glance | Widget + QS tile with health status | Rare |
+| App groups | Ready-made groups (shows which of your apps each covers) + custom groups, one shared limit | Fixed categories or per-app only |
 | Focus session | One tap closes all targets 30 min–2 h, can't end early | Often paid (Opal "deep focus") |
 
 Check rival claims again before using any of them in the listing (Play forbids false comparisons).

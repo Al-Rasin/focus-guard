@@ -154,8 +154,10 @@ final class Stats {
         SharedPreferences p = a.getSharedPreferences("limits", Context.MODE_PRIVATE);
         if (!(a instanceof MainActivity)) return;
         MainActivity m = (MainActivity) a;
-        root.addView(m.section("Today"));
+        Day week = sum(a, p, 0, 7), before = sum(a, p, 7, 7);
+        root.addView(weekCard(a, week, before));
 
+        root.addView(m.section("Today"));
         Day t = day(p, Limits.day(Clock.now(a)));
         LinearLayout tiles = Ui.row(a);
         tiles.addView(tile(a, String.valueOf(t.opens), "opens"), Ui.grow());
@@ -164,41 +166,83 @@ final class Stats {
         tiles.addView(tile(a, String.valueOf(streak(a, p)), "day streak"), Ui.grow());
         root.addView(tiles);
 
-        Day week = sum(a, p, 0, 7), before = sum(a, p, 7, 7);
-        root.addView(Ui.space(a, 10));
-        StringBuilder sb = new StringBuilder();
-        sb.append(L.t(a, "Last 7 days: " + week.opens + " opens, " + week.skips + " times you went back, "
-                + (week.seconds + 59) / 60 + " min"));
-        if (week.videos > 0) sb.append(L.t(a, ", " + week.videos + " videos"));
-        sb.append(".");
-        if (before.any) {
-            int diff = (before.seconds - week.seconds + 30) / 60;
-            sb.append(' ').append(L.t(a, diff > 0 ? diff + " min less than the week before."
-                    : diff < 0 ? -diff + " min more than the week before." : "Same as the week before."));
-        }
-        root.addView(Ui.left(a, sb.toString(), 14, Ui.MUTED));
-
         addChart(a, m, p, root);
 
         // Per-day list, newest first; days without any data are skipped.
         Calendar c = Clock.calendar(a);
-        SimpleDateFormat f = new SimpleDateFormat("EEE d", Locale.US);
-        LinearLayout list = Ui.column(a);
+        SimpleDateFormat f = new SimpleDateFormat("EEEE d MMM", Locale.US);
+        LinearLayout list = Ui.card(a);
+        list.setPadding(Ui.dp(a, 16), Ui.dp(a, 4), Ui.dp(a, 16), Ui.dp(a, 4));
         for (int i = 0; i < 7; i++) {
             Day d = day(p, dayKey(c));
             if (d.any && i > 0) {
-                TextView r = Ui.left(a, f.format(c.getTime()) + "   " + d.opens + " opens · " + d.skips
-                        + " back · " + min(d.seconds) + (d.extends_ > 0 ? " · extended" : ""), 13, "#6B7280");
-                list.addView(r);
+                if (list.getChildCount() > 0) {
+                    android.view.View line = new android.view.View(a);
+                    line.setBackgroundColor(android.graphics.Color.parseColor(Ui.LINE));
+                    list.addView(line, new LinearLayout.LayoutParams(-1, 1));
+                }
+                LinearLayout r = Ui.row(a);
+                r.setPadding(0, Ui.dp(a, 12), 0, Ui.dp(a, 12));
+                LinearLayout txt = Ui.column(a);
+                txt.addView(Ui.left(a, f.format(c.getTime()), 15, Ui.WHITE));
+                txt.addView(Ui.left(a, d.opens + " opens · went back " + d.skips
+                        + (d.extends_ > 0 ? " · extended" : ""), 12, Ui.DIM));
+                r.addView(txt, Ui.grow());
+                TextView mm = Ui.text(a, min(d.seconds), 15, Ui.SKY);
+                mm.setTypeface(Typeface.DEFAULT_BOLD);
+                r.addView(mm);
+                list.addView(r, Ui.wide());
             }
             c.add(Calendar.DAY_OF_YEAR, -1);
         }
         if (list.getChildCount() > 0) {
-            root.addView(Ui.space(a, 6));
-            root.addView(list);
+            root.addView(m.section("Earlier this week"));
+            root.addView(list, Ui.wide());
         }
     }
 
+    /** Big "last 7 days" card: minutes, opens/back line and a change-vs-last-week pill. */
+    private static LinearLayout weekCard(Context a, Day week, Day before) {
+        LinearLayout card = Ui.card(a);
+        android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+                new int[]{android.graphics.Color.parseColor("#17324A"), android.graphics.Color.parseColor("#141B26")});
+        g.setCornerRadius(Ui.dp(a, 20));
+        g.setStroke(Ui.dp(a, 1), android.graphics.Color.parseColor("#23405A"));
+        card.setBackground(g);
+        int pad = Ui.dp(a, 18);
+        card.setPadding(pad, pad, pad, pad);
+        TextView lbl = Ui.left(a, "LAST 7 DAYS", 12, Ui.SKY);
+        lbl.setTypeface(Typeface.DEFAULT_BOLD);
+        lbl.setLetterSpacing(0.08f);
+        card.addView(lbl);
+        LinearLayout big = Ui.row(a);
+        big.setGravity(android.view.Gravity.BOTTOM);
+        TextView n = Ui.left(a, String.valueOf((week.seconds + 59) / 60), 40, Ui.WHITE);
+        n.setTypeface(Typeface.DEFAULT_BOLD);
+        big.addView(n);
+        TextView u = Ui.left(a, " min", 16, Ui.MUTED);
+        u.setPadding(0, 0, 0, Ui.dp(a, 8));
+        big.addView(u);
+        card.addView(big);
+        String line = week.opens + " opens · went back " + week.skips + (week.skips == 1 ? " time" : " times")
+                + (week.videos > 0 ? " · " + week.videos + " videos" : "");
+        card.addView(Ui.left(a, line, 14, Ui.MUTED));
+        if (before.any) {
+            int diff = (before.seconds - week.seconds + 30) / 60;
+            String s = diff > 0 ? "▼ " + diff + " min less than the week before"
+                    : diff < 0 ? "▲ " + -diff + " min more than the week before" : "Same as the week before";
+            String fg = diff > 0 ? Ui.GREEN : diff < 0 ? Ui.RED : Ui.MUTED;
+            String bg = diff > 0 ? "#163A2A" : diff < 0 ? "#3A1C1F" : Ui.CARD;
+            TextView pill = Ui.text(a, s, 13, fg);
+            pill.setBackground(Ui.round(a, bg, 14));
+            pill.setPadding(Ui.dp(a, 12), Ui.dp(a, 6), Ui.dp(a, 12), Ui.dp(a, 6));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
+            lp.topMargin = Ui.dp(a, 12);
+            card.addView(pill, lp);
+        }
+        return card;
+    }
 
     /** Bar chart of minutes over the last 7 days, oldest left, today in sky blue. */
     private static void addChart(Activity a, MainActivity m, SharedPreferences p, LinearLayout root) {
@@ -216,8 +260,8 @@ final class Stats {
             c.add(Calendar.DAY_OF_YEAR, 1);
         }
         LinearLayout box = Ui.column(a);
-        box.setBackground(Ui.round(a, Ui.CARD, 14));
-        int pad = Ui.dp(a, 14);
+        box.setBackground(Ui.round(a, Ui.CARD, 20));
+        int pad = Ui.dp(a, 16);
         box.setPadding(pad, pad, pad, pad);
         LinearLayout bars = Ui.row(a);
         bars.setGravity(android.view.Gravity.BOTTOM);
@@ -227,7 +271,7 @@ final class Stats {
             col.setGravity(android.view.Gravity.BOTTOM | android.view.Gravity.CENTER_HORIZONTAL);
             col.addView(Ui.text(a, mins[i] > 0 ? String.valueOf(mins[i]) : "", 11, Ui.MUTED));
             android.view.View bar = new android.view.View(a);
-            bar.setBackground(Ui.round(a, i == 6 ? Ui.SKY : "#3B4A60", 4));
+            bar.setBackground(Ui.round(a, i == 6 ? Ui.SKY : "#3B4A60", 6));
             int bh = mins[i] == 0 ? Ui.dp(a, 3) : Math.max(Ui.dp(a, 6), h * mins[i] / max);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(Ui.dp(a, 18), bh);
             lp.topMargin = Ui.dp(a, 4);
@@ -241,10 +285,10 @@ final class Stats {
 
     private static LinearLayout tile(Context a, String big, String small) {
         LinearLayout box = Ui.column(a);
-        box.setBackground(Ui.round(a, Ui.CARD, 12));
-        int pad = Ui.dp(a, 10);
-        box.setPadding(pad, pad, pad, pad);
-        TextView n = Ui.text(a, big, 22, Ui.SKY);
+        box.setBackground(Ui.round(a, Ui.CARD, 16));
+        int pad = Ui.dp(a, 12);
+        box.setPadding(pad, Ui.dp(a, 14), pad, Ui.dp(a, 14));
+        TextView n = Ui.text(a, big, 24, Ui.WHITE);
         n.setTypeface(Typeface.DEFAULT_BOLD);
         box.addView(n);
         box.addView(Ui.text(a, small, 12, Ui.MUTED));

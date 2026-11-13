@@ -23,7 +23,7 @@ final class Ui {
     }
 
     static final String BG = "#0E1116", SKY = "#7DD3FC", MUTED = "#AEB6C2", CARD = "#1F2937",
-            WHITE = "#FFFFFF", RED = "#F87171", GREEN = "#86EFAC";
+            WHITE = "#FFFFFF", RED = "#F87171", GREEN = "#86EFAC", LINE = "#2B3544", DIM = "#6B7280";
 
     private Ui() {
     }
@@ -49,9 +49,74 @@ final class Ui {
         b.setAllCaps(false);
         b.setTextSize(17);
         b.setTextColor(Color.parseColor(fg));
-        b.setBackground(round(c, bg, 14));
-        b.setPadding(dp(c, 12), dp(c, 14), dp(c, 12), dp(c, 14));
+        b.setBackground(round(c, bg, 28));
+        b.setPadding(dp(c, 16), dp(c, 15), dp(c, 16), dp(c, 15));
+        b.setStateListAnimator(null);
         return b;
+    }
+
+    /** Main call-to-action: full-width sky pill with bold dark text. */
+    static Button pill(Context c, String s) {
+        Button b = button(c, s, SKY, BG);
+        b.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        return b;
+    }
+
+    /** Rounded chip; selected = sky fill, else outlined. */
+    static TextView chip(Context c, String s, boolean on) {
+        TextView t = text(c, s, 14, on ? BG : WHITE);
+        GradientDrawable g = round(c, on ? SKY : CARD, 20);
+        if (!on) g.setStroke(dp(c, 1), Color.parseColor(LINE));
+        t.setBackground(g);
+        t.setPadding(dp(c, 14), dp(c, 8), dp(c, 14), dp(c, 8));
+        if (on) t.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        return t;
+    }
+
+    interface IntSink {
+        void set(int i);
+    }
+
+    /** iOS-style segmented control: equal segments in a dark track, selected one in sky. */
+    static LinearLayout segmented(Context c, String[] labels, int selected, IntSink sink) {
+        LinearLayout track = row(c);
+        track.setBackground(round(c, "#161C26", 14));
+        int p = dp(c, 4);
+        track.setPadding(p, p, p, p);
+        TextView[] segs = new TextView[labels.length];
+        final int[] cur = {selected};
+        Runnable paint = () -> {
+            for (int i = 0; i < segs.length; i++) {
+                boolean on = i == cur[0];
+                segs[i].setBackground(on ? round(c, SKY, 11) : null);
+                segs[i].setTextColor(Color.parseColor(on ? BG : MUTED));
+                segs[i].setTypeface(on ? android.graphics.Typeface.DEFAULT_BOLD
+                        : android.graphics.Typeface.DEFAULT);
+            }
+        };
+        for (int i = 0; i < labels.length; i++) {
+            TextView t = text(c, labels[i], 14, MUTED);
+            t.setPadding(dp(c, 6), dp(c, 9), dp(c, 6), dp(c, 9));
+            final int idx = i;
+            t.setOnClickListener(v -> {
+                cur[0] = idx;
+                paint.run();
+                sink.set(idx);
+            });
+            segs[i] = t;
+            track.addView(t, grow());
+        }
+        paint.run();
+        return track;
+    }
+
+    /** Standard surface card: CARD fill, radius 20, 16 dp padding. */
+    static LinearLayout card(Context c) {
+        LinearLayout l = column(c);
+        l.setBackground(round(c, CARD, 20));
+        int p = dp(c, 16);
+        l.setPadding(p, p, p, p);
+        return l;
     }
 
     static Button small(Context c, String s) {

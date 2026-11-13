@@ -50,6 +50,10 @@ notification appears. If the pause screen can't open (pop-ups blocked), the Shor
 - **Stats**: today's opens, times you went back, minutes, streak; last 7 days vs the week before.
   Stored on the phone only, kept 60 days.
 - **Backup**: save settings to a JSON file and load them back (also on another phone, or in the Mac extension).
+- **App chooser and groups**: "+ Add" opens a chooser with ready-made groups (Social, Browsers,
+  Short video, Games, Video, Shopping, News — each shows which of your apps it would cover), a
+  custom group (pick any apps, give it a name) or a single app. A group shares one pause, one
+  open count and one timer across its apps.
 - **Focus now**: one tap closes every target for 30 min, 1 h or 2 h. It can't be ended early
   (starting again only makes it longer).
 - **Screens**: Home (status card with today's minutes, times you went back, streak and a kind line;
@@ -57,7 +61,8 @@ notification appears. If the pause screen can't open (pop-ups blocked), the Shor
   (gentle / balanced / strict) on each target; the matching preset is highlighted and a one-line
   summary ("10 s pause · 6 opens/day · 10 min each") updates as you change numbers. The pause screen shows a breathing circle with the countdown
   inside, how often you opened it today, and lets you pick how long to open it (e.g. 1 / 5 / 10 / 15 min).
-  Stats include a minutes-per-day chart for the last 7 days.
+  Stats: a last-7-days card (minutes, change vs the week before), today's tiles, a minutes-per-day
+  chart and a day-by-day list.
 - **At a glance**: Quick Settings tile and home-screen widget show whether protection is running
   ("Stopped – tap to fix" if not), opens left and today's minutes. A weekly report notification
   compares last week with the week before. The pause screen asks a different question each time.

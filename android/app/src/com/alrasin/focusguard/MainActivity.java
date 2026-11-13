@@ -123,17 +123,39 @@ public class MainActivity extends Activity {
 
     private void home() {
         screen = "home";
-        LinearLayout root = page("Focus Guard");
+        LinearLayout root = page(Flavor.PLAY ? "Unswipe" : "Focus Guard");
         Setup.addStatus(this, root);
 
-        root.addView(section("Targets"));
+        LinearLayout head = Ui.row(this);
+        head.addView(section("Your limits"), Ui.grow());
+        TextView addTop = Ui.text(this, "+ Add", 14, Ui.SKY);
+        addTop.setTypeface(Typeface.DEFAULT_BOLD);
+        addTop.setPadding(Ui.dp(this, 12), Ui.dp(this, 20), 0, Ui.dp(this, 8));
+        addTop.setOnClickListener(v -> picker());
+        head.addView(addTop);
+        root.addView(head, Ui.wide());
         for (String cat : Targets.all(this)) root.addView(targetCard(cat), card());
 
-        Button add = Ui.small(this, "+ Add a limit");
-        add.setTextColor(Color.parseColor(Ui.SKY));
-        add.setPadding(0, Ui.dp(this, 14), 0, Ui.dp(this, 14));
+        // Dashed "add" card, like an empty slot.
+        LinearLayout add = Ui.row(this);
+        GradientDrawable ab = Ui.round(this, Ui.BG, 20);
+        ab.setStroke(Ui.dp(this, 2), Color.parseColor(Ui.LINE), Ui.dp(this, 8), Ui.dp(this, 6));
+        add.setBackground(ab);
+        int ap = Ui.dp(this, 16);
+        add.setPadding(ap, ap, ap, ap);
+        TextView plus = Ui.text(this, "+", 24, Ui.BG);
+        plus.setTypeface(Typeface.DEFAULT_BOLD);
+        plus.setBackground(Ui.round(this, Ui.SKY, 14));
+        add.addView(plus, new LinearLayout.LayoutParams(Ui.dp(this, 44), Ui.dp(this, 44)));
+        add.addView(Ui.space(this, 0), new LinearLayout.LayoutParams(Ui.dp(this, 14), 1));
+        LinearLayout ac = Ui.column(this);
+        TextView at = Ui.left(this, "Add apps or a group", 16, Ui.WHITE);
+        at.setTypeface(Typeface.DEFAULT_BOLD);
+        ac.addView(at);
+        ac.addView(Ui.left(this, "Social, games, news… or make your own", 13, Ui.MUTED));
+        add.addView(ac, Ui.grow());
         add.setOnClickListener(v -> picker());
-        root.addView(add, Ui.wide());
+        root.addView(add, card());
         show(root);
     }
 
@@ -143,55 +165,83 @@ public class MainActivity extends Activity {
         android.content.SharedPreferences p = getSharedPreferences("limits", MODE_PRIVATE);
         Stats.Day t = Stats.day(p, Limits.day(Clock.now(this)));
         int streak = Stats.streak(this, p);
-        LinearLayout box = Setup.box(this);
+        LinearLayout box = Ui.column(this);
+        GradientDrawable hb = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{Color.parseColor("#17324A"), Color.parseColor("#141B26")});
+        hb.setCornerRadius(Ui.dp(this, 24));
+        hb.setStroke(Ui.dp(this, 1), Color.parseColor("#23405A"));
+        box.setBackground(hb);
+        int hp = Ui.dp(this, 18);
+        box.setPadding(hp, hp, hp, hp);
 
-        TextView status = Ui.left(this, Setup.rooted(this) ? "Protection is on (root watchdog)"
-                : "Protection is on", 13, Ui.GREEN);
+        TextView status = Ui.left(this, Setup.rooted(this) ? "Protection on · root watchdog"
+                : "Protection on", 13, Ui.GREEN);
+        status.setTypeface(Typeface.DEFAULT_BOLD);
         status.setCompoundDrawablePadding(Ui.dp(this, 8));
         status.setCompoundDrawablesRelative(dot(Ui.GREEN), null, null, null);
-        box.addView(status);
-        box.addView(Ui.space(this, 10));
+        GradientDrawable sb = Ui.round(this, "#14301F", 20);
+        status.setBackground(sb);
+        status.setPadding(Ui.dp(this, 12), Ui.dp(this, 6), Ui.dp(this, 12), Ui.dp(this, 6));
+        box.addView(status, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+        box.addView(Ui.space(this, 14));
 
         LinearLayout nums = Ui.row(this);
-        nums.addView(heroNum(String.valueOf((t.seconds + 59) / 60), "min today"), Ui.grow());
-        nums.addView(heroNum(String.valueOf(t.skips), "went back"), Ui.grow());
-        nums.addView(heroNum(String.valueOf(streak), "day streak"), Ui.grow());
+        String[][] tiles = {{String.valueOf((t.seconds + 59) / 60), "min today"},
+                {String.valueOf(t.skips), "went back"}, {String.valueOf(streak), "day streak"}};
+        for (int i = 0; i < tiles.length; i++) {
+            LinearLayout.LayoutParams tl = Ui.grow();
+            if (i > 0) tl.leftMargin = Ui.dp(this, 8);
+            nums.addView(heroNum(tiles[i][0], tiles[i][1]), tl);
+        }
         box.addView(nums, Ui.wide());
-        box.addView(Ui.space(this, 10));
+        box.addView(Ui.space(this, 14));
 
         String kind = t.opens == 0 ? "No short videos today. Keep it up."
                 : t.skips > 0 ? "You went back " + t.skips + " times today. Well done."
                 : streak > 1 ? streak + " days in a row without extending."
                 : "Every pause is a choice. You are doing fine.";
         box.addView(Ui.left(this, kind, 14, Ui.MUTED));
+        LinearLayout.LayoutParams bp = Ui.wide();
+        bp.bottomMargin = Ui.dp(this, 10);
+        root.addView(box, bp);
 
-        View line = new View(this);
-        line.setBackgroundColor(Color.parseColor("#2B3544"));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
-                Ui.dp(this, 1));
-        lp.topMargin = lp.bottomMargin = Ui.dp(this, 12);
-        box.addView(line, lp);
-
+        // Focus now: its own card under the hero.
+        LinearLayout fc = Ui.card(this);
         if (limits.inFocus()) {
             long left = (limits.focusUntil() - limits.now() + 59_999) / 60_000;
-            TextView f = Ui.left(this, "Focus session until " + Limits.hhmm(limits.focusUntil()), 16, Ui.SKY);
+            TextView f = Ui.left(this, "Focus session until " + Limits.hhmm(limits.focusUntil()), 17, Ui.SKY);
             f.setTypeface(Typeface.DEFAULT_BOLD);
-            box.addView(f);
-            box.addView(Ui.left(this, left + " min left. Every target is closed.", 13, Ui.MUTED));
+            fc.addView(f);
+            fc.addView(Ui.left(this, left + " min left. Every limit is closed.", 13, Ui.MUTED));
+            fc.addView(Ui.space(this, 10));
+            long total = Math.max(1, limits.focusUntil() - limits.focusStart());
+            float done = 1f - (limits.focusUntil() - limits.now()) / (float) total;
+            fc.addView(bar(Math.max(0f, Math.min(1f, done)), Ui.SKY), new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(this, 6)));
         } else {
-            TextView f = Ui.left(this, "Focus now", 16, Ui.WHITE);
+            LinearLayout fh = Ui.row(this);
+            TextView fi = Ui.text(this, "◎", 20, Ui.SKY);
+            fi.setBackground(Ui.round(this, "#16303F", 12));
+            fh.addView(fi, new LinearLayout.LayoutParams(Ui.dp(this, 40), Ui.dp(this, 40)));
+            fh.addView(Ui.space(this, 0), new LinearLayout.LayoutParams(Ui.dp(this, 12), 1));
+            LinearLayout ft = Ui.column(this);
+            TextView f = Ui.left(this, "Focus now", 17, Ui.WHITE);
             f.setTypeface(Typeface.DEFAULT_BOLD);
-            box.addView(f);
-            box.addView(Ui.left(this, "Close every target for a while. Can't be undone.", 13, Ui.MUTED));
-            box.addView(Ui.space(this, 8));
+            ft.addView(f);
+            ft.addView(Ui.left(this, "Close every limit for a while. Can't be undone.", 13, Ui.MUTED));
+            fh.addView(ft, Ui.grow());
+            fc.addView(fh, Ui.wide());
+            fc.addView(Ui.space(this, 12));
             LinearLayout row = Ui.row(this);
             int[] mins = {30, 60, 120};
             String[] names = {"30 min", "1 hour", "2 hours"};
             for (int i = 0; i < mins.length; i++) {
                 int m = mins[i];
                 String name = names[i];
-                Button b = Ui.button(this, name, "#16303F", Ui.SKY);
-                b.setTextSize(14);
+                TextView b = Ui.chip(this, name, false);
+                b.setTextColor(Color.parseColor(Ui.SKY));
+                b.setTypeface(Typeface.DEFAULT_BOLD);
                 b.setPadding(0, Ui.dp(this, 10), 0, Ui.dp(this, 10));
                 b.setOnClickListener(v -> new android.app.AlertDialog.Builder(this)
                         .setTitle(L.t(this, "Focus for " + name + "?"))
@@ -206,16 +256,16 @@ public class MainActivity extends Activity {
                 if (i > 0) bl.leftMargin = Ui.dp(this, 8);
                 row.addView(b, bl);
             }
-            box.addView(row, Ui.wide());
+            fc.addView(row, Ui.wide());
         }
-        LinearLayout.LayoutParams bp = Ui.wide();
-        bp.bottomMargin = Ui.dp(this, 8);
-        root.addView(box, bp);
+        root.addView(fc, bp);
     }
 
     private LinearLayout heroNum(String big, String small) {
         LinearLayout c = Ui.column(this);
-        TextView n = Ui.left(this, big, 28, Ui.WHITE);
+        c.setBackground(Ui.round(this, "#0F1A24", 16));
+        c.setPadding(Ui.dp(this, 12), Ui.dp(this, 10), Ui.dp(this, 8), Ui.dp(this, 10));
+        TextView n = Ui.left(this, big, 26, Ui.WHITE);
         n.setTypeface(Typeface.DEFAULT_BOLD);
         c.addView(n);
         c.addView(Ui.left(this, small, 12, Ui.MUTED));
@@ -308,55 +358,73 @@ public class MainActivity extends Activity {
 
     private View targetCard(String cat) {
         Config c = limits.config(cat);
-        LinearLayout box = Ui.column(this);
-        box.setBackground(Ui.round(this, Ui.CARD, 16));
-        int p = Ui.dp(this, 14);
-        box.setPadding(p, p, p, p);
+        LinearLayout box = Ui.card(this);
 
         LinearLayout row = Ui.row(this);
-        row.addView(iconView(cat), new LinearLayout.LayoutParams(Ui.dp(this, 40), Ui.dp(this, 40)));
-        row.addView(Ui.space(this, 0), new LinearLayout.LayoutParams(Ui.dp(this, 12), 1));
+        View ic = iconView(cat);
+        FrameLayout sq = new FrameLayout(this);
+        sq.setBackground(Ui.round(this, "#111827", 14));
+        int ip = Ui.dp(this, 6);
+        sq.setPadding(ip, ip, ip, ip);
+        sq.addView(ic, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT));
+        row.addView(sq, new LinearLayout.LayoutParams(Ui.dp(this, 48), Ui.dp(this, 48)));
+        row.addView(Ui.space(this, 0), new LinearLayout.LayoutParams(Ui.dp(this, 14), 1));
 
         LinearLayout col = Ui.column(this);
-        TextView name = Ui.left(this, Limits.label(this, cat), 17, Ui.WHITE);
+        TextView name = Ui.left(this, Limits.label(this, cat), 17, c.enabled ? Ui.WHITE : Ui.MUTED);
         name.setTypeface(Typeface.DEFAULT_BOLD);
         col.addView(name);
-        String sub;
-        int used = limits.used(cat), total = limits.total(cat);
-        if (!c.enabled) sub = "Not watched";
-        else if (limits.hardBlock(cat) != null) sub = "Closed: " + limits.hardBlock(cat);
-        else if (Targets.isGroup(cat)) {
+        String tag;
+        if (Targets.isGroup(cat)) {
             int n = Targets.groupApps(this, cat).size();
-            sub = "Opened " + used + " of " + total + " today · " + (n == 1 ? "1 app" : n + " apps");
-        } else sub = "Opened " + used + " of " + total + " today"
-                + ("whole".equals(c.mode) || Targets.wholeOnly(cat) ? " · whole app" : "");
-        col.addView(Ui.left(this, sub, 13, c.enabled ? Ui.MUTED : "#6B7280"));
+            tag = "Group · " + (n == 1 ? "1 app" : n + " apps");
+        } else tag = "whole".equals(c.mode) || Targets.wholeOnly(cat) ? "Whole app" : "Shorts / Reels only";
+        col.addView(Ui.left(this, tag + " · " + c.opens + " × " + c.openMin + " min", 13, Ui.MUTED));
         row.addView(col, Ui.grow());
 
         // Status pill.
-        String pill, color;
-        if (!c.enabled) { pill = "Off"; color = "#6B7280"; }
-        else if (limits.isUnlocked(cat)) { pill = "Open now"; color = Ui.GREEN; }
-        else if (limits.hardBlock(cat) != null || limits.left(cat) == 0) { pill = "Closed"; color = Ui.RED; }
-        else { pill = limits.left(cat) + " left"; color = Ui.SKY; }
+        String pill, color, fill;
+        if (!c.enabled) { pill = "Off"; color = Ui.DIM; fill = "#1A2230"; }
+        else if (limits.isUnlocked(cat)) { pill = "Open now"; color = Ui.GREEN; fill = "#14301F"; }
+        else if (limits.hardBlock(cat) != null || limits.left(cat) == 0) { pill = "Closed"; color = Ui.RED; fill = "#3A1A1E"; }
+        else { pill = limits.left(cat) + " left"; color = Ui.SKY; fill = "#16303F"; }
         TextView pt = Ui.text(this, pill, 12, color);
         pt.setTypeface(Typeface.DEFAULT_BOLD);
-        GradientDrawable pb = Ui.round(this, Ui.BG, 20);
-        pb.setStroke(Ui.dp(this, 1), Color.parseColor(color));
-        pt.setBackground(pb);
-        pt.setPadding(Ui.dp(this, 10), Ui.dp(this, 4), Ui.dp(this, 10), Ui.dp(this, 4));
+        pt.setBackground(Ui.round(this, fill, 20));
+        pt.setPadding(Ui.dp(this, 10), Ui.dp(this, 5), Ui.dp(this, 10), Ui.dp(this, 5));
         row.addView(pt);
         box.addView(row);
 
-        // Opens used of today's total.
-        if (c.enabled && total > 0) {
-            box.addView(Ui.space(this, 12));
-            box.addView(bar(Math.min(1f, used / (float) total),
-                    used >= total ? Ui.RED : Ui.SKY), new LinearLayout.LayoutParams(
+        int used = limits.used(cat), total = limits.total(cat);
+        if (c.enabled && limits.hardBlock(cat) != null) {
+            box.addView(Ui.space(this, 10));
+            box.addView(Ui.left(this, "Closed: " + limits.hardBlock(cat), 13, Ui.RED));
+        } else if (c.enabled && total > 0) {
+            box.addView(Ui.space(this, 14));
+            box.addView(segBar(used, total), new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(this, 6)));
+            box.addView(Ui.space(this, 6));
+            box.addView(Ui.left(this, "Opened " + used + " of " + total + " today", 12, Ui.DIM));
         }
         box.setOnClickListener(v -> edit(cat));
         return box;
+    }
+
+    /** Opens bar: one segment per open (up to 12), else a continuous bar. */
+    private View segBar(int used, int total) {
+        String color = used >= total ? Ui.RED : Ui.SKY;
+        if (total > 12) return bar(Math.min(1f, used / (float) total), color);
+        LinearLayout r = Ui.row(this);
+        for (int i = 0; i < total; i++) {
+            View s = new View(this);
+            s.setBackground(Ui.round(this, i < used ? color : "#2B3648", 3));
+            LinearLayout.LayoutParams l = new LinearLayout.LayoutParams(0,
+                    LinearLayout.LayoutParams.MATCH_PARENT, 1f);
+            if (i > 0) l.leftMargin = Ui.dp(this, 4);
+            r.addView(s, l);
+        }
+        return r;
     }
 
     /** Horizontal progress bar filled to {@code f} (0..1). */
@@ -429,44 +497,87 @@ public class MainActivity extends Activity {
             root.addView(Ui.space(this, 8));
         }
 
+        // Live preview: the three numbers that matter, big, like a ticket.
+        LinearLayout prev = Ui.column(this);
+        android.graphics.drawable.GradientDrawable pg = new android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+                new int[]{Color.parseColor("#17324A"), Color.parseColor("#141B26")});
+        pg.setCornerRadius(Ui.dp(this, 20));
+        pg.setStroke(Ui.dp(this, 1), Color.parseColor("#23405A"));
+        prev.setBackground(pg);
+        int pp = Ui.dp(this, 16);
+        prev.setPadding(pp, pp, pp, pp);
+        TextView presetName = Ui.left(this, "", 12, Ui.SKY);
+        presetName.setTypeface(Typeface.DEFAULT_BOLD);
+        prev.addView(presetName);
+        prev.addView(Ui.space(this, 8));
+        LinearLayout nums = Ui.row(this);
+        TextView[] big = new TextView[3];
+        String[] caps = {"pause", "opens a day", "min each"};
+        for (int i = 0; i < 3; i++) {
+            LinearLayout col = Ui.column(this);
+            big[i] = Ui.left(this, "", 26, Ui.WHITE);
+            big[i].setTypeface(Typeface.DEFAULT_BOLD);
+            col.addView(big[i]);
+            col.addView(Ui.left(this, caps[i], 12, Ui.MUTED));
+            nums.addView(col, Ui.grow());
+        }
+        prev.addView(nums, Ui.wide());
+        prev.addView(Ui.space(this, 8));
+        TextView total = Ui.left(this, "", 13, Ui.MUTED);
+        prev.addView(total);
+        root.addView(prev, card());
+
         LinearLayout g = group(root);
         g.addView(toggle("On", edit.enabled, b -> edit.enabled = b));
         if (Targets.hasMode(cat)) {
             String part = cat.equals(Limits.SHORTS) ? "Only Shorts" : "Only Reels";
-            g.addView(choice("Block", part, "Whole app", "whole".equals(edit.mode),
-                    whole -> edit.mode = whole ? "whole" : "part"));
+            g.addView(Ui.left(this, "Block", 16, Ui.WHITE));
+            g.addView(Ui.space(this, 6));
+            g.addView(Ui.segmented(this, new String[]{part, "Whole app"}, "whole".equals(edit.mode) ? 1 : 0,
+                    i -> edit.mode = i == 1 ? "whole" : "part"), Ui.wide());
+            g.addView(Ui.space(this, 10));
         }
 
         root.addView(section("Presets"));
-        LinearLayout presets = Ui.row(this);
         String[] names = {"Gentle", "Balanced", "Strict"};
-        Button[] pb = new Button[names.length];
+        LinearLayout presets = Ui.row(this);
+        presets.setBackground(Ui.round(this, "#161C26", 14));
+        int tp = Ui.dp(this, 4);
+        presets.setPadding(tp, tp, tp, tp);
+        TextView[] pb = new TextView[names.length];
         for (int i = 0; i < names.length; i++) {
             int which = i;
-            Button b = Ui.small(this, names[i]);
-            b.setPadding(0, Ui.dp(this, 12), 0, Ui.dp(this, 12));
+            TextView b = Ui.text(this, names[i], 14, Ui.MUTED);
+            b.setPadding(0, Ui.dp(this, 10), 0, Ui.dp(this, 10));
             b.setOnClickListener(v -> {
                 preset(edit, which);
                 renderEdit(cat);
             });
-            LinearLayout.LayoutParams lp = Ui.grow();
-            if (i > 0) lp.leftMargin = Ui.dp(this, 8);
-            presets.addView(b, lp);
+            presets.addView(b, Ui.grow());
             pb[i] = b;
         }
         root.addView(presets, Ui.wide());
         root.addView(Ui.space(this, 6));
-        TextView summary = Ui.left(this, "", 14, Ui.SKY);
-        root.addView(summary);
-        root.addView(Ui.left(this, "A preset fills in the numbers below. Nothing changes until you save.", 13, "#6B7280"));
-        // Highlight the preset that matches the numbers, and keep the one-line summary current.
+        root.addView(Ui.left(this, "A preset fills in the numbers below. Nothing changes until you save.", 12, Ui.DIM));
+        // Highlight the preset that matches the numbers, and keep the preview current.
         editChanged = () -> {
             int match = presetMatch(edit);
             for (int i = 0; i < pb.length; i++) {
-                pb[i].setBackground(Ui.round(this, i == match ? Ui.SKY : Ui.CARD, 14));
-                pb[i].setTextColor(Color.parseColor(i == match ? Ui.BG : Ui.WHITE));
+                boolean on = i == match;
+                pb[i].setBackground(on ? Ui.round(this, Ui.SKY, 11) : null);
+                pb[i].setTextColor(Color.parseColor(on ? Ui.BG : Ui.MUTED));
+                pb[i].setTypeface(on ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
             }
-            summary.setText(summary(edit));
+            presetName.setText(L.t(this, (match < 0 ? "Custom" : names[match]).toUpperCase()
+                    + (edit.enabled ? "" : " · OFF")));
+            big[0].setText(edit.pauseS + " s");
+            big[1].setText(edit.opens == 0 ? L.t(this, "None") : String.valueOf(edit.opens));
+            big[2].setText(edit.opens == 0 ? "–" : String.valueOf(edit.openMin));
+            int day = edit.opens * edit.openMin;
+            if (edit.dailyCapMin > 0) day = Math.min(day, edit.dailyCapMin);
+            total.setText(edit.opens == 0 ? L.t(this, "Always closed")
+                    : L.t(this, "Up to " + day + " min a day"));
         };
         editChanged.run();
 
@@ -522,8 +633,7 @@ public class MainActivity extends Activity {
         sched.setMinLines(2);
         adv.addView(sched, Ui.wide());
 
-        root.addView(Ui.space(this, 24));
-        Button save = Ui.button(this, "Save", Ui.SKY, Ui.BG);
+        Button save = Ui.pill(this, "Save");
         save.setOnClickListener(v -> {
             List<String> windows = new ArrayList<>();
             for (String w : sched.getText().toString().split("[\\n,]")) {
@@ -538,10 +648,8 @@ public class MainActivity extends Activity {
             Toast.makeText(this, L.t(this, Strict.save(this, edit)), Toast.LENGTH_LONG).show();
             openTab("home");
         });
-        root.addView(save, Ui.wide());
-
+        root.addView(Ui.space(this, 24));
         if (cat.startsWith(Limits.APP_PREFIX)) {
-            root.addView(Ui.space(this, 12));
             Button remove = Ui.button(this, "Remove this app", Ui.CARD, Ui.RED);
             remove.setOnClickListener(v -> {
                 Toast.makeText(this, L.t(this, Strict.removeApp(this, cat.substring(Limits.APP_PREFIX.length()))),
@@ -550,7 +658,6 @@ public class MainActivity extends Activity {
             });
             root.addView(remove, Ui.wide());
         } else if (Targets.isGroup(cat)) {
-            root.addView(Ui.space(this, 12));
             Button remove = Ui.button(this, "Delete group", Ui.CARD, Ui.RED);
             remove.setOnClickListener(v -> {
                 Toast.makeText(this, L.t(this, Strict.removeGroup(this, cat)), Toast.LENGTH_LONG).show();
@@ -558,7 +665,8 @@ public class MainActivity extends Activity {
             });
             root.addView(remove, Ui.wide());
         }
-        show(root);
+        root.addView(Ui.space(this, 16));
+        showWithFooter(root, save);
     }
 
     /** 0 gentle, 1 balanced, 2 strict. Leaves on/off, mode, schedule and timer alone. */
@@ -573,13 +681,6 @@ public class MainActivity extends Activity {
                 c.askWhy ? 1 : 0};
         for (int i = 0; i < PRESETS.length; i++) if (java.util.Arrays.equals(PRESETS[i], now)) return i;
         return -1;
-    }
-
-    /** "10 s pause · 6 opens/day · 10 min each" in the app language. */
-    private String summary(Config c) {
-        String opens = c.opens == 0 ? L.t(this, "no opens") : L.t(this, c.opens + " opens/day");
-        return L.t(this, c.pauseS + " s pause") + " · " + opens
-                + (c.opens == 0 ? "" : " · " + L.t(this, c.openMin + " min each"));
     }
 
     /** Gentle, Balanced, Strict: pause, step, opens, min, cooldown, extOpens, extMax, askWhy. */
@@ -616,6 +717,7 @@ public class MainActivity extends Activity {
     /** Ready-made groups: name, Android app category (-1 = none), known packages. */
     private static final String[] KIND_NAMES = {"Social", "Short video", "Games", "Video", "Shopping",
             "News", "Browsers"};
+    private static final String[] KIND_ICONS = {"💬", "🎬", "🎮", "📺", "🛍️", "📰", "🌐"};
     private static final String[] KIND_HINTS = {"X, Reddit, Snapchat…", "Likee, Moj, Kwai…",
             "Every game", "Netflix, streaming…", "Amazon, Daraz, Temu…", "News and magazines",
             "Chrome, Brave, Firefox…"};
@@ -658,11 +760,13 @@ public class MainActivity extends Activity {
     private static final class App {
         final String pkg, label;
         final int category;
+        final boolean system;
 
-        App(String pkg, String label, int category) {
+        App(String pkg, String label, int category, boolean system) {
             this.pkg = pkg;
             this.label = label;
             this.category = category;
+            this.system = system;
         }
     }
 
@@ -674,20 +778,28 @@ public class MainActivity extends Activity {
                 new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)) {
             String pkg = r.activityInfo.packageName;
             if (pkg.equals(getPackageName()) || m.containsKey(pkg)) continue;
-            m.put(pkg, new App(pkg, r.loadLabel(pm).toString(), r.activityInfo.applicationInfo.category));
+            ApplicationInfo ai = r.activityInfo.applicationInfo;
+            m.put(pkg, new App(pkg, r.loadLabel(pm).toString(), ai.category,
+                    (ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0));
         }
         List<App> out = new ArrayList<>(m.values());
         Collections.sort(out, (a, b) -> a.label.compareToIgnoreCase(b.label));
         return out;
     }
 
-    /** Apps of a ready-made group that are on this phone and still free. */
+    /**
+     * Apps of a ready-made group that are on this phone and still free. The Android category only
+     * counts for user-installed apps (Contacts says "social") not listed in another group (Brave too).
+     */
     private Set<String> kindApps(int k, List<App> apps, Map<String, String> owners) {
         Set<String> known = new HashSet<>(Arrays.asList(KIND_PKGS[k]));
+        Set<String> listed = new HashSet<>();
+        for (String[] ps : KIND_PKGS) listed.addAll(Arrays.asList(ps));
         Set<String> out = new HashSet<>();
         for (App a : apps) {
             if (builtinOwner(a.pkg) != null || owners.containsKey(a.pkg) || MESSENGERS.contains(a.pkg)) continue;
-            if (known.contains(a.pkg) || (KIND_CATS[k] >= 0 && a.category == KIND_CATS[k])) out.add(a.pkg);
+            if (known.contains(a.pkg) || (KIND_CATS[k] >= 0 && a.category == KIND_CATS[k]
+                    && !a.system && !listed.contains(a.pkg))) out.add(a.pkg);
         }
         return out;
     }
@@ -711,8 +823,8 @@ public class MainActivity extends Activity {
         for (int i = 0; i < order.size(); i++) {
             int kk = order.get(i), k = i;
             Set<String> sel = sets.get(kk);
-            View tile = tile(KIND_NAMES[kk], sel.isEmpty() ? L.t(this, "None on this phone")
-                    : L.t(this, sel.size() == 1 ? "1 app" : sel.size() + " apps"), KIND_HINTS[kk], !sel.isEmpty());
+            View tile = tile(KIND_ICONS[kk], KIND_NAMES[kk], sel.isEmpty() ? L.t(this, "None on this phone")
+                    : L.t(this, sel.size() == 1 ? "1 app" : sel.size() + " apps"), KIND_HINTS[kk], sel);
             tile.setOnClickListener(v -> builder(null, L.t(this, KIND_NAMES[kk]), sel, false));
             if (k % 2 == 0) {
                 grid = Ui.row(this);
@@ -729,12 +841,12 @@ public class MainActivity extends Activity {
             }
         }
 
-        root.addView(section("Your own"));
+        root.addView(section("Make your own"));
         LinearLayout own = Ui.row(this);
-        View custom = tile("Custom group", null, "Pick any apps, give it a name", true);
+        View custom = tile("✚", "Custom group", null, "Pick any apps, give it a name", null);
         custom.setOnClickListener(v -> builder(null, "", new HashSet<>(), false));
         own.addView(custom, Ui.grow());
-        View one = tile("One app", null, "Its own pause and opens", true);
+        View one = tile("◉", "One app", null, "Its own pause and opens", null);
         one.setOnClickListener(v -> builder(null, "", new HashSet<>(), true));
         own.addView(one, lp(8));
         root.addView(own, card());
@@ -747,20 +859,26 @@ public class MainActivity extends Activity {
         return lp;
     }
 
-    /** Chooser tile: bold name, a count line in sky, a muted hint. */
-    private View tile(String name, String count, String hint, boolean live) {
-        LinearLayout t = Ui.column(this);
-        t.setBackground(Ui.round(this, Ui.CARD, 16));
-        int p = Ui.dp(this, 14);
-        t.setPadding(p, p, p, p);
-        t.setMinimumHeight(Ui.dp(this, 96));
+    /** Chooser tile: emoji badge or the apps' icons, bold name, sky count, muted hint. live = sel non-empty or null. */
+    private View tile(String glyph, String name, String count, String hint, Set<String> sel) {
+        boolean live = sel == null || !sel.isEmpty();
+        LinearLayout t = Ui.card(this);
+        t.setMinimumHeight(Ui.dp(this, 132));
+        if (sel != null && !sel.isEmpty()) {
+            t.addView(stack(sel, 3));
+        } else {
+            TextView g = Ui.text(this, glyph, 18, Ui.SKY);
+            g.setBackground(Ui.round(this, "#16303F", 12));
+            t.addView(g, new LinearLayout.LayoutParams(Ui.dp(this, 36), Ui.dp(this, 36)));
+        }
+        t.addView(Ui.space(this, 10));
         TextView n = Ui.left(this, name, 16, Ui.WHITE);
         n.setTypeface(Typeface.DEFAULT_BOLD);
         t.addView(n);
-        if (count != null) t.addView(Ui.left(this, count, 13, live ? Ui.SKY : "#6B7280"));
-        t.addView(Ui.space(this, 4));
-        t.addView(Ui.left(this, hint, 12, "#6B7280"));
-        if (!live) t.setAlpha(0.6f);
+        if (count != null) t.addView(Ui.left(this, count, 13, live ? Ui.SKY : Ui.DIM));
+        t.addView(Ui.space(this, 2));
+        t.addView(Ui.left(this, hint, 12, Ui.DIM));
+        if (!live) t.setAlpha(0.55f);
         return t;
     }
 
@@ -809,6 +927,8 @@ public class MainActivity extends Activity {
         }
 
         EditText search = input("", "Search apps");
+        search.setBackground(Ui.round(this, "#161C26", 24));
+        search.setPadding(Ui.dp(this, 16), Ui.dp(this, 12), Ui.dp(this, 16), Ui.dp(this, 12));
         search.setInputType(InputType.TYPE_CLASS_TEXT);
         search.setSingleLine(true);
         Drawable lens = getDrawable(R.drawable.ic_search);
@@ -877,8 +997,11 @@ public class MainActivity extends Activity {
                 box.setPadding(bp, bp, bp, bp);
                 Runnable paint = () -> {
                     boolean on = buildSel.contains(a.pkg);
-                    GradientDrawable g = Ui.round(this, on ? Ui.SKY : Ui.CARD, 8);
+                    GradientDrawable g = Ui.round(this, on ? Ui.SKY : Ui.CARD, 13);
                     if (!on) g.setStroke(Ui.dp(this, 2), Color.parseColor("#6B7280"));
+                    GradientDrawable rb = Ui.round(this, on ? "#16303F" : Ui.CARD, 14);
+                    if (on) rb.setStroke(Ui.dp(this, 1), Color.parseColor("#2C5A75"));
+                    row.setBackground(rb);
                     box.setBackground(g);
                     Drawable d = getDrawable(R.drawable.ic_check);
                     if (d != null) d.setTint(Color.parseColor(Ui.BG));
@@ -907,7 +1030,7 @@ public class MainActivity extends Activity {
             show(root);
             return;
         }
-        Button save = Ui.button(this, buildCat == null ? "Next: set the limit" : "Save", Ui.SKY, Ui.BG);
+        Button save = Ui.pill(this, buildCat == null ? "Next: set the limit" : "Save");
         save.setOnClickListener(v -> {
             String n = buildName == null ? "" : buildName.trim();
             if (n.isEmpty()) {
@@ -1194,33 +1317,6 @@ public class MainActivity extends Activity {
             if (editChanged != null) editChanged.run();
         });
         return s;
-    }
-
-    private View choice(String label, String a, String b, boolean bOn, BoolSink sink) {
-        LinearLayout row = Ui.row(this);
-        row.setPadding(0, Ui.dp(this, 6), 0, Ui.dp(this, 6));
-        row.addView(Ui.left(this, label, 16, Ui.WHITE), Ui.grow());
-        Button ba = Ui.small(this, a), bb = Ui.small(this, b);
-        Runnable paint = () -> {
-            boolean on = "whole".equals(edit.mode);
-            ba.setBackground(Ui.round(this, on ? "#2B3648" : Ui.SKY, 14));
-            ba.setTextColor(Color.parseColor(on ? Ui.WHITE : Ui.BG));
-            bb.setBackground(Ui.round(this, on ? Ui.SKY : "#2B3648", 14));
-            bb.setTextColor(Color.parseColor(on ? Ui.BG : Ui.WHITE));
-        };
-        ba.setOnClickListener(v -> {
-            sink.set(false);
-            paint.run();
-        });
-        bb.setOnClickListener(v -> {
-            sink.set(true);
-            paint.run();
-        });
-        paint.run();
-        row.addView(ba);
-        row.addView(Ui.space(this, 0), new LinearLayout.LayoutParams(Ui.dp(this, 6), 1));
-        row.addView(bb);
-        return row;
     }
 
     static List<String> list(String... s) {

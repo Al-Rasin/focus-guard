@@ -245,16 +245,23 @@ final class Setup {
 
     static LinearLayout box(Activity a) {
         LinearLayout box = Ui.column(a);
-        box.setBackground(Ui.round(a, Ui.CARD, 14));
-        int pad = Ui.dp(a, 14);
+        box.setBackground(Ui.round(a, Ui.CARD, 20));
+        int pad = Ui.dp(a, 16);
         box.setPadding(pad, pad, pad, pad);
         return box;
     }
 
     private static void step(Activity a, LinearLayout box, String label, boolean ok, String action, Runnable run) {
         LinearLayout row = Ui.row(a);
-        row.setPadding(0, Ui.dp(a, 8), 0, Ui.dp(a, 4));
-        row.addView(Ui.left(a, (ok ? "✓  " : "○  ") + L.t(a, label), 15, ok ? Ui.GREEN : Ui.WHITE), Ui.grow());
+        row.setPadding(0, Ui.dp(a, 10), 0, Ui.dp(a, 4));
+        TextView badge = Ui.text(a, ok ? "✓" : "", 13, Ui.BG);
+        badge.setTypeface(Typeface.DEFAULT_BOLD);
+        android.graphics.drawable.GradientDrawable g = Ui.round(a, ok ? Ui.GREEN : Ui.CARD, 12);
+        if (!ok) g.setStroke(Ui.dp(a, 2), android.graphics.Color.parseColor(Ui.DIM));
+        badge.setBackground(g);
+        row.addView(badge, new LinearLayout.LayoutParams(Ui.dp(a, 24), Ui.dp(a, 24)));
+        row.addView(Ui.space(a, 0), new LinearLayout.LayoutParams(Ui.dp(a, 12), 1));
+        row.addView(Ui.left(a, label, 15, ok ? Ui.MUTED : Ui.WHITE), Ui.grow());
         if (!ok && action != null) {
             Button b = Ui.small(a, action);
             b.setBackground(Ui.round(a, Ui.SKY, 14));

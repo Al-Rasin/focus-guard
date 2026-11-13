@@ -123,9 +123,16 @@ final class Limits {
         return now() < focusUntil();
     }
 
+    /** When the current focus session started (for the progress bar). */
+    long focusStart() {
+        return prefs.getLong("focus_start", now());
+    }
+
     void startFocus(int min) {
         long until = Math.max(focusUntil(), now() + min * 60_000L);
-        prefs.edit().putLong("focus_until", until).apply();
+        android.content.SharedPreferences.Editor e = prefs.edit().putLong("focus_until", until);
+        if (!inFocus()) e.putLong("focus_start", now());
+        e.apply();
         Health.changed(ctx);
     }
 
