@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Unswipe / Focus Guard: a pause button inside breathing rings.
+     Stop the endless feed, take a breath, then choose. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#7DD3FC"
-        android:pathData="M54,28 L76,36 L76,54 C76,68 66,78 54,82 C42,78 32,68 32,54 L32,36 Z" />
-    <path android:fillColor="#0E1116"
-        android:pathData="M45,44 h6 v22 h-6 Z M57,44 h6 v22 h-6 Z" />
+    <path android:fillColor="#14222C" android:pathData="M22,54 a32,32 0 1,0 64,0 a32,32 0 1,0 -64,0 Z" />
+    <path android:fillColor="#1E3848" android:pathData="M29,54 a25,25 0 1,0 50,0 a25,25 0 1,0 -50,0 Z" />
+    <path android:fillColor="#7DD3FC" android:pathData="M36,54 a18,18 0 1,0 36,0 a18,18 0 1,0 -36,0 Z" />
+    <path android:fillColor="#0E1116" android:pathData="M47,45 h5 v18 h-5 Z M56,45 h5 v18 h-5 Z" />
 </vector>
