@@ -37,6 +37,8 @@ public class MainActivity extends Activity {
     private String tab = "home";
     private Config edit;
     private Limits limits;
+    /** The activity while it is in front (main thread only), so the service can redraw it. */
+    private static MainActivity front;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -48,9 +50,21 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        front = this;
         Strict.applyDue(this);
         if (isTab(screen)) openTab(screen);
         else if (screen.equals("strict")) strict(); // e.g. back from the device admin page
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (front == this) front = null;
+    }
+
+    /** Service bound/unbound: redraw Home so the setup card isn't stuck on "not running". */
+    static void healthChanged() {
+        if (front != null && front.screen.equals("home")) front.openTab("home");
     }
 
     @Override

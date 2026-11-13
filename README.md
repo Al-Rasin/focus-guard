@@ -32,7 +32,8 @@ cd android && ./build.sh        # needs Android SDK build-tools 35 + platform 36
 
 Install `android/FocusGuard.apk` and open it. A setup checklist walks through accessibility
 (Android 13+: App info → ⋮ → "Allow restricted settings" first), battery, autostart (MIUI, Samsung, Oppo,
-Vivo, Huawei) and notifications. If Android stops the service, a "tap to fix" notification appears.
+Vivo, Huawei), MIUI "pop-ups in background" and notifications. If Android stops the service, a "tap to fix"
+notification appears. If the pause screen can't open (pop-ups blocked), the Short is closed instead of playing.
 
 - **Targets**: YouTube Shorts, Facebook Reels, facebook.com, Instagram Reels, TikTok, or any app (whole app).
 - **Per-target settings**: pause length (and growing pause), opens per day, minutes per open, daily time cap,

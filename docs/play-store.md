@@ -4,6 +4,13 @@ Status 2026-11-13: Play build done and emulator-tested (API 36): AAB builds and 
 consent text, setup steps, Strict page without "Protection", Shorts pause in Chrome.
 Publishing needs the owner's decisions at the end of this file.
 
+Real phone 2026-11-13 (Xiaomi MIUI, Android 11): YouTube Shorts pause / Go back / 1-min open + timer /
+expiry, Brave Shorts + adult URL → google.com, Telegram adult search kicked + normal chat kept, Stats.
+Found and fixed: MIUI blocks activity starts from the background unless "Pop-ups in background" is on
+(new setup step; if the pause still can't open, the Short is left instead of playing); YouTube Premium
+went picture-in-picture behind the pause (`FLAG_ACTIVITY_NO_USER_ACTION`). Force-stop removes the
+service from the enabled list → "Unswipe is off" notification, user turns it back on.
+
 ## Build
 
 One-time upload key (keep it out of the repo, back it up — losing it means a key reset request):

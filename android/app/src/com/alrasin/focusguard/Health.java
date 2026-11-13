@@ -30,5 +30,6 @@ final class Health {
         } catch (RuntimeException ignored) { // tile not added: nothing to update
         }
         Widget.refresh(c);
+        MainActivity.healthChanged();
     }
 }

@@ -10,6 +10,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.os.CountDownTimer;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -32,6 +33,8 @@ import java.util.Random;
  * to open it (spends one open) or go back.
  */
 public class PauseActivity extends Activity {
+    /** elapsedRealtime of the last onCreate; GuardService checks the pause screen really opened. */
+    static volatile long createdAt;
     private static final int[] CHOICES_MIN = {1, 5, 10, 15, 30, 60};
     /** Rotated one per pause, so the screen doesn't turn into wallpaper the eye skips. */
     private static final String[] QUESTIONS = {
@@ -55,6 +58,7 @@ public class PauseActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        createdAt = SystemClock.elapsedRealtime();
         Ui.onBack(this, this::goBack);
         cat = getIntent().getStringExtra("cat");
         pkg = getIntent().getStringExtra("pkg");

@@ -51,7 +51,40 @@ final class Setup {
     }
 
     static boolean batteryOk(Context c) {
-        return c.getSystemService(PowerManager.class).isIgnoringBatteryOptimizations(c.getPackageName());
+        if (c.getSystemService(PowerManager.class).isIgnoringBatteryOptimizations(c.getPackageName())) return true;
+        // MIUI's own "No restrictions" doesn't touch Android's list and can't be read; trust the user.
+        return miuiBattery() && prefs(c).getBoolean("battery_miui", false);
+    }
+
+    /** Play build on Xiaomi: no battery-exemption permission, and MIUI hides Android's list. */
+    private static boolean miuiBattery() {
+        return Flavor.PLAY && xiaomi();
+    }
+
+    static boolean xiaomi() {
+        return Build.MANUFACTURER.toLowerCase(Locale.US).matches(".*(xiaomi|redmi|poco).*");
+    }
+
+    /**
+     * MIUI: "Display pop-up windows while running in background" (app op 10021). New apps get it
+     * off, and then MIUI silently drops the pause screen. Read the op if MIUI lets us; else trust
+     * the user (GuardService clears the flag when a pause screen fails to show).
+     */
+    static boolean popupOk(Context c) {
+        if (!xiaomi()) return true;
+        try {
+            android.app.AppOpsManager ops = c.getSystemService(android.app.AppOpsManager.class);
+            Object m = android.app.AppOpsManager.class
+                    .getMethod("checkOpNoThrow", int.class, int.class, String.class)
+                    .invoke(ops, 10021, android.os.Process.myUid(), c.getPackageName());
+            if (m instanceof Integer) return (Integer) m == android.app.AppOpsManager.MODE_ALLOWED;
+        } catch (Throwable ignored) {
+        }
+        return prefs(c).getBoolean("popup_miui", false);
+    }
+
+    static void popupBlocked(Context c) {
+        prefs(c).edit().putBoolean("popup_miui", false).apply();
     }
 
     static boolean notificationsOk(Context c) {
@@ -67,7 +100,7 @@ final class Setup {
     static boolean done(Context c) {
         if (!prefs(c).getBoolean("disclosed", false) || !notificationsOk(c)) return false;
         if (rooted(c)) return true;
-        return accessibilityOn(c) && GuardService.instance != null && batteryOk(c)
+        return accessibilityOn(c) && GuardService.instance != null && batteryOk(c) && popupOk(c)
                 && (!needsAutostart() || prefs(c).getBoolean("autostart", false));
     }
 
@@ -109,12 +142,25 @@ final class Setup {
                 box.addView(info);
             }
             step(a, box, "Battery: unrestricted", batteryOk(a), "Allow", () -> {
+                // MIUI: its per-app page ("No restrictions"); the generic list redirects to an app list.
+                if (miuiBattery() && open(a, new Intent().setComponent(new ComponentName(
+                        "com.miui.powerkeeper", "com.miui.powerkeeper.ui.HiddenAppsConfigActivity"))
+                        .putExtra("package_name", a.getPackageName())
+                        .putExtra("package_label", a.getApplicationInfo().loadLabel(a.getPackageManager())))) {
+                    p.edit().putBoolean("battery_miui", true).apply();
+                    return;
+                }
                 // Play build has no REQUEST_IGNORE_BATTERY_OPTIMIZATIONS (restricted use): open the list.
                 Intent i = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
                         Uri.parse("package:" + a.getPackageName()));
                 if (Flavor.PLAY || !open(a, i))
                     open(a, new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
             });
+            if (miuiBattery() && !batteryOk(a)) {
+                TextView hint = Ui.left(a, "Pick \"No restrictions\" on the next page.", 13, Ui.MUTED);
+                hint.setPadding(Ui.dp(a, 28), 0, 0, Ui.dp(a, 4));
+                box.addView(hint);
+            }
             if (needsAutostart()) {
                 boolean auto = p.getBoolean("autostart", false);
                 step(a, box, "Autostart allowed (" + Build.MANUFACTURER + ")", auto, auto ? null : "Open", () -> {
@@ -122,6 +168,21 @@ final class Setup {
                     // Android can't tell us whether it worked; trust the user once they've been there.
                     p.edit().putBoolean("autostart", true).apply();
                 });
+            }
+            if (xiaomi()) {
+                boolean pop = popupOk(a);
+                step(a, box, "Pop-ups in background allowed", pop, pop ? null : "Open", () -> {
+                    if (!open(a, new Intent("miui.intent.action.APP_PERM_EDITOR").setComponent(new ComponentName(
+                            "com.miui.securitycenter", "com.miui.permcenter.permissions.PermissionsEditorActivity"))
+                            .putExtra("extra_pkgname", a.getPackageName()))) appInfo(a);
+                    p.edit().putBoolean("popup_miui", true).apply();
+                });
+                if (!pop) {
+                    TextView hint = Ui.left(a, "Turn on \"Display pop-up windows while running in background\", "
+                            + "or the pause screen can't open.", 13, Ui.MUTED);
+                    hint.setPadding(Ui.dp(a, 28), 0, 0, Ui.dp(a, 4));
+                    box.addView(hint);
+                }
             }
         }
         step(a, box, "Notifications allowed", notificationsOk(a), "Allow", () -> {

@@ -404,8 +404,35 @@ public class GuardService extends AccessibilityService {
         Intent i = new Intent(this, PauseActivity.class)
                 .putExtra("cat", cat)
                 .putExtra("pkg", pkg)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION);
+                // NO_USER_ACTION: no onUserLeaveHint, so YouTube (Premium) doesn't go picture-in-picture
+                // and keep playing in a corner while the pause is up.
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION
+                        | Intent.FLAG_ACTIVITY_NO_USER_ACTION);
         startActivity(i);
+        // Fail closed: some phones (MIUI "pop-ups in background" off) drop the start silently.
+        handler.postDelayed(() -> {
+            if (PauseActivity.createdAt >= now || !currentPkg().equals(pkg)) return;
+            trace("gate " + cat + ": pause blocked");
+            Setup.popupBlocked(this);
+            popupNote();
+            leave(pkg, label + ": pause screen blocked, allow pop-ups");
+        }, 2000);
+    }
+
+    private void popupNote() {
+        NotificationManager nm = getSystemService(NotificationManager.class);
+        nm.createNotificationChannel(new NotificationChannel(
+                "alerts", "Protection stopped", NotificationManager.IMPORTANCE_HIGH));
+        android.app.PendingIntent pi = android.app.PendingIntent.getActivity(this, 0,
+                new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
+        nm.notify(7, new Notification.Builder(this, "alerts")
+                .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
+                .setContentTitle(L.t(this, "Pause screen blocked"))
+                .setContentText(L.t(this, "Allow pop-ups in background. Tap to fix."))
+                .setContentIntent(pi)
+                .setAutoCancel(true)
+                .build());
     }
 
     /**
@@ -552,6 +579,7 @@ public class GuardService extends AccessibilityService {
         long now = SystemClock.elapsedRealtime();
         if (hit != null && now - lastKickAt > 1500) {
             lastKickAt = now; // the next scan may still see the chat; don't back out of Telegram
+            trace("telegram kick: " + hit);
             performGlobalAction(GLOBAL_ACTION_BACK);
             handler.postDelayed(() -> performGlobalAction(GLOBAL_ACTION_BACK), 350);
             Toast.makeText(this, L.t(this, "Adult channel blocked"), Toast.LENGTH_SHORT).show();

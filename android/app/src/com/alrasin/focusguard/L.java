@@ -227,8 +227,15 @@ final class L {
                 "ধূসর (\"Restricted setting\")? App info → ⋮ মেনু → Allow restricted settings, তারপর আবার চেষ্টা করুন।");
         add("App info", "অ্যাপ ইনফো");
         add("Battery: unrestricted", "ব্যাটারি: আনরেস্ট্রিক্টেড");
+        add("Pick \"No restrictions\" on the next page.", "পরের পেজে \"No restrictions\" বেছে নিন।");
         add("Notifications allowed", "নোটিফিকেশন চালু");
         add("Autostart allowed (%s)", "অটোস্টার্ট চালু (%s)");
+        add("Pop-ups in background allowed", "ব্যাকগ্রাউন্ডে পপ-আপ চালু");
+        add("Turn on \"Display pop-up windows while running in background\", or the pause screen can't open.",
+                "\"Display pop-up windows while running in background\" চালু করুন, নইলে পজ স্ক্রিন খুলতে পারে না।");
+        add("Pause screen blocked", "পজ স্ক্রিন আটকে গেছে");
+        add("Allow pop-ups in background. Tap to fix.", "ব্যাকগ্রাউন্ডে পপ-আপের অনুমতি দিন। ঠিক করতে ট্যাপ করুন।");
+        add("pause screen blocked, allow pop-ups", "পজ স্ক্রিন আটকে গেছে, পপ-আপের অনুমতি দিন");
         add("Open", "খুলুন");
         add("Allow", "অনুমতি দিন");
         add("✓ Protection is on", "✓ সুরক্ষা চালু");
