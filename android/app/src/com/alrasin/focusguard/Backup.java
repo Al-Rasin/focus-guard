@@ -32,18 +32,15 @@ final class Backup {
 
     static void addButtons(MainActivity m, LinearLayout root) {
         root.addView(m.section("Backup"));
-        root.addView(Ui.left(m, "Targets, their settings and your ideas. Also works with the Mac extension.",
-                14, Ui.MUTED));
-        root.addView(Ui.space(m, 8));
-        Button out = Ui.small(m, "Save settings to a file");
-        out.setOnClickListener(v -> m.startActivityForResult(new Intent(Intent.ACTION_CREATE_DOCUMENT)
-                .addCategory(Intent.CATEGORY_OPENABLE).setType("application/json")
-                .putExtra(Intent.EXTRA_TITLE, "focus-guard-settings.json"), EXPORT));
-        root.addView(out, m.card());
-        Button in = Ui.small(m, "Load settings from a file");
-        in.setOnClickListener(v -> m.startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT)
-                .addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"), IMPORT));
-        root.addView(in, m.card());
+        LinearLayout g = m.group(root);
+        g.addView(m.navRow("Save settings to a file", "Targets, their settings and your ideas", null,
+                () -> m.startActivityForResult(new Intent(Intent.ACTION_CREATE_DOCUMENT)
+                        .addCategory(Intent.CATEGORY_OPENABLE).setType("application/json")
+                        .putExtra(Intent.EXTRA_TITLE, "focus-guard-settings.json"), EXPORT)));
+        g.addView(m.divider());
+        g.addView(m.navRow("Load settings from a file", "Also works with the Mac extension", null,
+                () -> m.startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT)
+                        .addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"), IMPORT)));
     }
 
     /** Called from MainActivity.onActivityResult. Returns true if it handled the request. */
@@ -60,7 +57,14 @@ final class Backup {
         for (String cat : Targets.all(a)) targets.put(cat, Config.load(a, cat).toJson());
         JSONArray apps = new JSONArray();
         for (String pkg : Targets.apps(a)) apps.put(pkg);
-        return new JSONObject().put("focusguard", 1).put("targets", targets).put("apps", apps)
+        JSONObject groups = new JSONObject();
+        for (String id : Targets.groups(a)) {
+            String cat = Targets.GROUP_PREFIX + id;
+            JSONArray ga = new JSONArray();
+            for (String pkg : Targets.groupApps(a, cat)) ga.put(pkg);
+            groups.put(id, new JSONObject().put("name", Targets.groupName(a, cat)).put("apps", ga));
+        }
+        return new JSONObject().put("focusguard", 1).put("targets", targets).put("apps", apps).put("groups", groups)
                 .put("swaps", Config.swapsText(a));
     }
 
@@ -94,6 +98,28 @@ final class Backup {
                 if (pkg.matches("[A-Za-z0-9_.]+") && !pkg.equals(a.getPackageName())) Targets.addApp(a, pkg);
             }
 
+        JSONObject groups = j.optJSONObject("groups");
+        if (groups != null)
+            for (Iterator<String> it = groups.keys(); it.hasNext(); ) {
+                String id = it.next();
+                JSONObject g = groups.optJSONObject(id);
+                if (g == null || !id.matches("[0-9]{1,4}")) continue;
+                java.util.Set<String> set = new java.util.HashSet<>();
+                JSONArray ga = g.optJSONArray("apps");
+                if (ga != null)
+                    for (int i = 0; i < ga.length(); i++) {
+                        String pkg = ga.optString(i, "").trim();
+                        if (pkg.matches("[A-Za-z0-9_.]+") && !pkg.equals(a.getPackageName())) set.add(pkg);
+                    }
+                String cat = Targets.GROUP_PREFIX + id;
+                if (Targets.groups(a).contains(id)) {
+                    set.addAll(Targets.groupApps(a, cat)); // never drops apps: that would loosen
+                    Targets.setGroupApps(a, cat, set);
+                } else {
+                    Targets.putGroup(a, id, g.optString("name", "Group"), set);
+                }
+            }
+
         JSONObject targets = j.optJSONObject("targets");
         int done = 0;
         boolean waiting = false;
@@ -101,7 +127,9 @@ final class Backup {
             String cat = it.next();
             boolean known = Arrays.asList(Limits.BUILTIN).contains(cat)
                     || (cat.startsWith(Limits.APP_PREFIX)
-                    && Targets.apps(a).contains(cat.substring(Limits.APP_PREFIX.length())));
+                    && Targets.apps(a).contains(cat.substring(Limits.APP_PREFIX.length())))
+                    || (Targets.isGroup(cat)
+                    && Targets.groups(a).contains(cat.substring(Targets.GROUP_PREFIX.length())));
             JSONObject cfg = targets.optJSONObject(cat);
             if (!known || cfg == null) continue;
             Config c = Config.load(a, cat);

@@ -102,6 +102,41 @@ final class Strict {
         return "Strict mode: removed " + when(at);
     }
 
+    /** Deletes a group: now when strict mode is off, else after the delay. */
+    static String removeGroup(Context ctx, String cat) {
+        if (!on(ctx)) {
+            Targets.removeGroup(ctx, cat);
+            return "Removed";
+        }
+        long at = at(ctx);
+        prefs(ctx).edit().putLong("rm_" + cat, at).apply();
+        return "Strict mode: removed " + when(at);
+    }
+
+    /** New app list of a group. Adding apps is stricter (now); dropping any waits in strict mode. */
+    static String setGroupApps(Context ctx, String cat, java.util.Set<String> apps) {
+        applyDue(ctx);
+        if (!on(ctx) || apps.containsAll(Targets.groupApps(ctx, cat))) {
+            Targets.setGroupApps(ctx, cat, apps);
+            prefs(ctx).edit().remove("ga_" + cat).apply();
+            return "Saved";
+        }
+        // Additions apply now, removals wait.
+        java.util.Set<String> now = Targets.groupApps(ctx, cat);
+        now.addAll(apps);
+        Targets.setGroupApps(ctx, cat, now);
+        long at = at(ctx);
+        try {
+            org.json.JSONArray arr = new org.json.JSONArray();
+            for (String pkg : apps) arr.put(pkg);
+            prefs(ctx).edit().putString("ga_" + cat, new JSONObject().put("at", at).put("apps", arr).toString())
+                    .apply();
+        } catch (Exception e) {
+            return "Not saved";
+        }
+        return "Strict mode: takes effect " + when(at);
+    }
+
     /** Apply every pending change whose time has come. Cheap; called often. */
     static void applyDue(Context ctx) {
         SharedPreferences p = prefs(ctx);
@@ -120,8 +155,25 @@ final class Strict {
                 }
                 e.remove(k);
                 changed = true;
+            } else if (k.startsWith("ga_")) {
+                try {
+                    JSONObject j = new JSONObject((String) en.getValue());
+                    if (j.getLong("at") > now) continue;
+                    String cat = k.substring(3);
+                    if (Targets.groups(ctx).contains(cat.substring(Targets.GROUP_PREFIX.length()))) {
+                        java.util.Set<String> apps = new java.util.HashSet<>();
+                        org.json.JSONArray arr = j.getJSONArray("apps");
+                        for (int i = 0; i < arr.length(); i++) apps.add(arr.getString(i));
+                        Targets.setGroupApps(ctx, cat, apps);
+                    }
+                } catch (Exception ignored) {
+                }
+                e.remove(k);
+                changed = true;
             } else if (k.startsWith("rm_") && (Long) en.getValue() <= now) {
-                Targets.removeApp(ctx, k.substring(3));
+                String what = k.substring(3);
+                if (Targets.isGroup(what)) Targets.removeGroup(ctx, what);
+                else Targets.removeApp(ctx, what);
                 e.remove(k);
                 changed = true;
             }
@@ -149,7 +201,7 @@ final class Strict {
         SharedPreferences.Editor e = p.edit();
         for (Map.Entry<String, ?> en : p.getAll().entrySet()) {
             String k = en.getKey();
-            if (k.startsWith("p_")) e.putString(k, setAt((String) en.getValue()));
+            if (k.startsWith("p_") || k.startsWith("ga_")) e.putString(k, setAt((String) en.getValue()));
             else if (k.startsWith("rm_") || k.equals("delay_at") || k.equals("off_at")) e.putLong(k, 0);
         }
         e.commit();
@@ -165,7 +217,7 @@ final class Strict {
     }
 
     static void cancel(Context ctx, String cat) {
-        SharedPreferences.Editor e = prefs(ctx).edit().remove("p_" + cat);
+        SharedPreferences.Editor e = prefs(ctx).edit().remove("p_" + cat).remove("ga_" + cat).remove("rm_" + cat);
         if (cat.startsWith(Limits.APP_PREFIX)) e.remove("rm_" + cat.substring(Limits.APP_PREFIX.length()));
         e.apply();
     }
@@ -184,6 +236,16 @@ final class Strict {
             long rm = p.getLong("rm_" + cat.substring(Limits.APP_PREFIX.length()), 0);
             if (rm > 0) at = at == 0 ? rm : Math.min(at, rm);
         }
+        long rm = p.getLong("rm_" + cat, 0);
+        if (rm > 0) at = at == 0 ? rm : Math.min(at, rm);
+        String ga = p.getString("ga_" + cat, null);
+        if (ga != null) {
+            try {
+                long g = new JSONObject(ga).getLong("at");
+                at = at == 0 ? g : Math.min(at, g);
+            } catch (Exception ignored) {
+            }
+        }
         return at;
     }
 
@@ -191,8 +253,9 @@ final class Strict {
         applyDue(a);
         long at = pendingAt(a, cat);
         if (at == 0) return;
-        boolean rm = cat.startsWith(Limits.APP_PREFIX)
-                && prefs(a).contains("rm_" + cat.substring(Limits.APP_PREFIX.length()));
+        boolean rm = (cat.startsWith(Limits.APP_PREFIX)
+                && prefs(a).contains("rm_" + cat.substring(Limits.APP_PREFIX.length())))
+                || prefs(a).contains("rm_" + cat);
         root.addView(note(a, (rm ? "Removal" : "Looser settings") + " waiting: takes effect " + when(at)
                 + ". The settings below are the ones in force now.",
                 () -> {

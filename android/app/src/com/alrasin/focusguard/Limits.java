@@ -50,6 +50,7 @@ final class Limits {
 
     /** Like {@link #label(String)}, but app targets show the app's own name. */
     static String label(Context ctx, String cat) {
+        if (Targets.isGroup(cat)) return Targets.groupName(ctx, cat);
         if (cat.startsWith(APP_PREFIX)) {
             String pkg = cat.substring(APP_PREFIX.length());
             try {

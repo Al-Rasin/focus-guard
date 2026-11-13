@@ -111,7 +111,6 @@ Focus, Habit tracker, Self-improvement — use what the Console offers. **Contai
 | Strict mode | Delayed loosening, PIN, weekly emergency open | Simple lock or none |
 | Glance | Widget + QS tile with health status | Rare |
 | Focus session | One tap closes all targets 30 min–2 h, can't end early | Often paid (Opal "deep focus") |
-| Language | English + Bangla | Rarely Bangla |
 
 Check rival claims again before using any of them in the listing (Play forbids false comparisons).
 

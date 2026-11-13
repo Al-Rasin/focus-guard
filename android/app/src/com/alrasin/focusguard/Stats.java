@@ -170,7 +170,7 @@ final class Stats {
         sb.append(L.t(a, "Last 7 days: " + week.opens + " opens, " + week.skips + " times you went back, "
                 + (week.seconds + 59) / 60 + " min"));
         if (week.videos > 0) sb.append(L.t(a, ", " + week.videos + " videos"));
-        sb.append(L.bangla(a) ? "।" : ".");
+        sb.append(".");
         if (before.any) {
             int diff = (before.seconds - week.seconds + 30) / 60;
             sb.append(' ').append(L.t(a, diff > 0 ? diff + " min less than the week before."
@@ -199,7 +199,6 @@ final class Stats {
         }
     }
 
-    private static final String[] BN_DAYS = {"র", "সো", "ম", "বু", "বৃ", "শু", "শ"};
 
     /** Bar chart of minutes over the last 7 days, oldest left, today in sky blue. */
     private static void addChart(Activity a, MainActivity m, SharedPreferences p, LinearLayout root) {
@@ -212,7 +211,7 @@ final class Stats {
         int max = 1;
         for (int i = 0; i < 7; i++) {
             mins[i] = (day(p, dayKey(c)).seconds + 59) / 60;
-            labels[i] = L.bangla(a) ? BN_DAYS[c.get(Calendar.DAY_OF_WEEK) - 1] : f.format(c.getTime());
+            labels[i] = f.format(c.getTime());
             max = Math.max(max, mins[i]);
             c.add(Calendar.DAY_OF_YEAR, 1);
         }

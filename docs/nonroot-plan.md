@@ -171,3 +171,5 @@ keep-alive; without it, the app does it itself. No Gradle, no libraries, UI buil
   buttons `accessibilityDataSensitive` — the service can't see them. So uninstall is only blocked
   with device admin; the deactivate page is matched by its header "admin app is active"
   (English only). Cosmetic fixes after: widget picker preview (`previewLayout`, API 31+) and English singular ("1 time") via `L.singular`.
+- 2026-11-13: Bangla UI removed on the owner's request; the app is English only (`L.t` keeps only the
+  English plural fix). Bangla adult keywords stay (detection, not UI).

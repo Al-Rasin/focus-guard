@@ -50,7 +50,6 @@ notification appears. If the pause screen can't open (pop-ups blocked), the Shor
 - **Stats**: today's opens, times you went back, minutes, streak; last 7 days vs the week before.
   Stored on the phone only, kept 60 days.
 - **Backup**: save settings to a JSON file and load them back (also on another phone, or in the Mac extension).
-- **Language**: English or Bangla (follows the phone, or pick one).
 - **Focus now**: one tap closes every target for 30 min, 1 h or 2 h. It can't be ended early
   (starting again only makes it longer).
 - **Screens**: Home (status card with today's minutes, times you went back, streak and a kind line;

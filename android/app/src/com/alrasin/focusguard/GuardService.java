@@ -174,7 +174,7 @@ public class GuardService extends AccessibilityService {
         w.addAll(BROWSERS);
         w.add(YOUTUBE);
         w.addAll(FACEBOOK);
-        for (String cat : Targets.all(this)) w.addAll(Targets.packages(cat));
+        for (String cat : Targets.all(this)) w.addAll(Targets.packages(this, cat));
         if (guardSettings()) w.addAll(Strict.SETTINGS);
         watched = w;
     }
@@ -185,7 +185,7 @@ public class GuardService extends AccessibilityService {
      */
     private void countVideo(String pkg) {
         String cat = timer == null ? null : timer.cat();
-        if (cat == null || !timer.running() || !Targets.packages(cat).contains(pkg)) return;
+        if (cat == null || !timer.running() || !Targets.packages(this, cat).contains(pkg)) return;
         Config c = limits.config(cat);
         if (c.maxVideos <= 0 || wholeMode(cat)) return;
         long now = SystemClock.elapsedRealtime();
@@ -335,7 +335,7 @@ public class GuardService extends AccessibilityService {
     private String detectRaw(String pkg) {
         // Whole-app targets first: any screen of the app counts.
         for (String cat : Targets.all(this)) {
-            if (Targets.packages(cat).contains(pkg) && wholeMode(cat) && limits.config(cat).enabled) return cat;
+            if (Targets.packages(this, cat).contains(pkg) && wholeMode(cat) && limits.config(cat).enabled) return cat;
         }
         if (pkg.equals(YOUTUBE)) {
             if (hasVisibleId(pkg, SHORTS_IDS)) return Limits.SHORTS;
