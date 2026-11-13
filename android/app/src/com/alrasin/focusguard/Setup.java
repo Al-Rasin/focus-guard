@@ -25,7 +25,6 @@ import java.util.Locale;
  * watchdog keeps the service on, so only the disclosure and notifications are asked for.
  */
 final class Setup {
-    static final String SERVICE = "com.alrasin.focusguard/com.alrasin.focusguard.GuardService";
 
     private Setup() {
     }

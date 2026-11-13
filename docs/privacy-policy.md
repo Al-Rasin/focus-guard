@@ -1,8 +1,9 @@
-# Focus Guard – Privacy Policy
+# Unswipe (Focus Guard) – Privacy Policy
 
 Last updated: 2026-11-13
 
-Focus Guard is a self-control app. It adds a pause before short-form video (YouTube Shorts,
+Unswipe is the Google Play name of Focus Guard (package `com.alrasin.unswipe`); this policy
+covers both. It is a self-control app. It adds a pause before short-form video (YouTube Shorts,
 Facebook Reels, Instagram Reels, TikTok and apps you pick) and blocks adult websites.
 
 ## What the app collects
@@ -12,7 +13,7 @@ anywhere. There are no ads, no analytics, no crash reporting and no accounts.
 
 ## Accessibility service
 
-Focus Guard uses Android's Accessibility service, and only after you agree on an in-app
+The app uses Android's Accessibility service, and only after you agree on an in-app
 consent screen. It uses it to:
 
 - see which app and screen is in front, so it can tell when Shorts, Reels or a target app opens;
@@ -35,7 +36,7 @@ This data stays in the app's private storage. Android backup is turned off for t
 | Permission | Why |
 |---|---|
 | Accessibility service | Detect Shorts/Reels/adult pages and leave them (see above) |
-| Notifications | "Opens left", "Focus Guard is off – tap to fix", weekly report |
+| Notifications | "Opens left", "Unswipe/Focus Guard is off – tap to fix", weekly report |
 | Run at startup | Restart the protection after a reboot |
 | Ignore battery optimisation | Keep the service from being killed |
 | Device admin (optional) | Makes uninstalling harder while strict mode is on. No admin policies are used |

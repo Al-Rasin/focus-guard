@@ -31,37 +31,70 @@ Play build differences (`FG_PLAY=1` → `Flavor.PLAY`):
 | `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | yes (direct dialog) | removed; setup opens the battery settings list instead |
 | Consent text | mentions the settings guard | without it |
 | `keywords.local.json` | included if present | always left out |
+| Name / package | Focus Guard, `com.alrasin.focusguard` | Unswipe, `com.alrasin.unswipe` (build.sh renames the copy; Java classes stay in `com.alrasin.focusguard`) |
 
 Use **Play App Signing**; we only hold the upload key.
 
-## Store listing (draft)
+## Store listing (ASO draft)
 
-**Name**: Focus Guard: Shorts & Reels Limit
+Name chosen 2026-11-13 after a name check: **Unswipe** (package `com.alrasin.unswipe`). Taken or
+crowded: FocusGuard, Focus Shield, ScrollPause, Pausely, BreathGate, Scroll Brake, NoScroll,
+StopScroll, Unreel, ShortStop, Focsy. "Unswipe" = the habit it breaks, short, easy to spell,
+no rival app found with it. Check Play search once more right before creating the app.
 
-**Short description (80)**: Pause before Shorts & Reels. Daily limits. Blocks adult sites. No internet.
+ASO rules used: main keywords in the title (strongest signal), the rest in the short description
+and the first lines of the full description; natural sentences, no keyword lists, no rival brand
+names (Play policy), no "#1"/"best".
+
+**Title (30)**: `Unswipe: Block Shorts & Reels` (29 chars)
+
+**Short description (80)**: `Pause before YouTube Shorts & Reels. Daily limits, porn blocker. No internet.` (77 chars)
 
 **Full description**:
 
-> Focus Guard puts a short pause between you and endless videos.
+> Stop doomscrolling without deleting your apps. Unswipe adds a short breathing pause before
+> YouTube Shorts, Instagram Reels, Facebook Reels and TikTok, so you choose instead of swiping
+> on autopilot. The rest of YouTube, Instagram and Facebook keeps working.
 >
-> • A breathing pause before YouTube Shorts, Facebook Reels, Instagram Reels, TikTok or any app you pick
-> • Choose how long to open: 1, 5, 10 or 15 minutes, with a timer on screen
-> • Opens per day, daily time cap, cooldown, block hours — per app
-> • Works in browsers too (Chrome, Brave, Firefox, Edge, Samsung Internet…)
-> • Adult websites blocked, always
-> • Strict mode: loosening a setting waits up to 72 h; optional partner PIN
-> • Focus now: close everything for 30 min, 1 or 2 hours — no way out early
-> • Stats, streaks, weekly report, home-screen widget and Quick Settings tile
+> HOW IT WORKS
+> • A breathing pause and a question before short videos open
+> • Choose how long to watch: 1, 5, 10 or 15 minutes, with a timer on screen
+> • Daily limits per app: opens per day, time cap, cooldown, block hours
+> • Works in browsers too (Chrome, Brave, Firefox, Edge, Samsung Internet)
+> • Add any app you want to limit, not only short video
+>
+> STAY ON TRACK
+> • Focus now: block every distraction for 30 min, 1 or 2 hours
+> • Strict mode: loosening a limit waits up to 72 h; optional partner PIN
+> • Screen time stats, streaks and a weekly report
+> • Home-screen widget and Quick Settings tile
+>
+> ADULT CONTENT BLOCKER
+> • Porn and adult websites are blocked in browsers, always on
+>
+> PRIVATE BY DESIGN
+> • No internet permission: nothing is collected, nothing is sent
+> • No ads, no account, no subscription — every feature is free
 > • English and বাংলা
 >
-> Privacy first: the app has **no internet permission**. Nothing is collected, nothing is sent.
-> No ads, no account, no subscription.
+> Unswipe uses Android's Accessibility service only to see when Shorts, Reels or a limited app
+> is on screen and to leave it. Nothing is stored or shared.
 
-**Category**: Productivity. **Contains ads**: No. **In-app purchases**: No.
+**Category**: Productivity. **Tags** (Console, pick up to 5): Digital wellbeing, Productivity,
+Focus, Habit tracker, Self-improvement — use what the Console offers. **Contains ads**: No.
+**In-app purchases**: No.
+
+**Screenshot captions** (big text on top of each screenshot, keywords again):
+1. Pause before Shorts & Reels
+2. Choose how long you watch
+3. Daily limits per app
+4. Block porn sites, always
+5. Focus now: no distractions
+6. No internet. No ads. Free.
 
 ## Edge over competitors
 
-| | Focus Guard | Typical rivals (ScreenZen, one sec, Opal, BlockerX, Digital Wellbeing) |
+| | Unswipe | Typical rivals (ScreenZen, one sec, Opal, BlockerX, Digital Wellbeing) |
 |---|---|---|
 | Internet permission | None — provably offline | Most need it (accounts, sync, analytics) |
 | Price | Free, everything | Many lock limits/strict mode behind a subscription |
@@ -108,7 +141,7 @@ Closed test with **at least 12 testers for 14 days in a row** before production 
 
 ## Owner decisions
 
-1. Final app name and package (now `com.alrasin.focusguard`; can't change after publishing).
+1. ~~App name and package~~ — done: Unswipe, `com.alrasin.unswipe` (can't change after publishing).
 2. LICENSE for the repo.
 3. Play developer account ($25) and 12 testers.
 4. Upload key + Play App Signing.
