@@ -56,7 +56,14 @@ final class L {
                 out = out.replaceFirst("%s", Matcher.quoteReplacement(t(c, m.group(g))));
             return out;
         }
-        return en;
+        return en.matches("[\\d:.,/%+\\- ]+") ? digits(en) : en;
+    }
+
+    /** "01:29" → "০১:২৯": numbers filled into a pattern (times, counts) in Bangla digits. */
+    private static String digits(String s) {
+        StringBuilder b = new StringBuilder(s.length());
+        for (char ch : s.toCharArray()) b.append(ch >= '0' && ch <= '9' ? (char) ('\u09E6' + ch - '0') : ch);
+        return b.toString();
     }
 
     private static void add(String en, String bn) {
@@ -316,6 +323,8 @@ final class L {
         add("Breathe out", "শ্বাস ছাড়ুন");
         add("Opened %s times today · %s min", "আজ %s বার খোলা · %s মিনিট");
         add("%s min", "%s মিনিট");
+        add("%s s", "%s সেকেন্ড");
+        add("Is this really an emergency?", "সত্যিই কি জরুরি?");
         add("I don't want to open %s", "আমি %s খুলতে চাই না");
         add("Good moment to do something else.", "অন্য কিছু করার ভালো সময়।");
         add("Take a breath. Do you really need this now?", "একটু শ্বাস নিন। এখন কি সত্যিই দরকার?");

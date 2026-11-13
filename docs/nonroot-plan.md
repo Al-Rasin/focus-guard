@@ -153,3 +153,7 @@ keep-alive; without it, the app does it itself. No Gradle, no libraries, UI buil
   protection status, today's minutes / went back / streak, encouraging line, Focus now buttons with
   a confirm dialog. Edit screen: matching preset highlighted (`PRESETS`, `presetMatch`), live
   summary line. Bangla strings added.
+- Bangla digits (2026-11-13): `L.t` turns pure-number strings/groups into Bangla digits; steppers,
+  focus dialog time and emergency countdown go through it. Emulator-tested (API 36, Bangla): hero,
+  focus confirm "০৯:১১", steppers "৫ সেকেন্ড"/"১৫ মিনিট"/"১৯:০০", Strict preset highlight + live
+  summary, highlight drops when a value changes.

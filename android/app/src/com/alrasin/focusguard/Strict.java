@@ -320,7 +320,7 @@ final class Strict {
                 if (!d.isShowing()) return;
                 long left = (end - SystemClock.elapsedRealtime() + 999) / 1000;
                 if (left > 0) {
-                    t.setText("Is this really an emergency?\n\n" + left + " s");
+                    t.setText(L.t(a, "Is this really an emergency?") + "\n\n" + L.t(a, left + " s"));
                     h.postDelayed(this, 250);
                 } else {
                     t.setText("Uses your emergency open for this week.");

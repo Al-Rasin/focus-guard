@@ -620,7 +620,7 @@ public class MainActivity extends Activity {
         value.setMinWidth(Ui.dp(this, 72));
         Runnable paint = () -> {
             int v = get.getAsInt();
-            value.setText(v == 0 && zero != null ? L.t(this, zero) : v + (unit.isEmpty() ? "" : " " + unit).replace(" :", ":"));
+            value.setText(v == 0 && zero != null ? L.t(this, zero) : L.t(this, (v + (unit.isEmpty() ? "" : " " + unit)).replace(" :", ":")));
             if (editChanged != null) editChanged.run();
         };
         paint.run();
