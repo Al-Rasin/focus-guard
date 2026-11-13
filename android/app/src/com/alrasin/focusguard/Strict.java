@@ -481,6 +481,11 @@ final class Strict {
         em.setOnClickListener(v -> emergency(a));
         root.addView(em);
 
+        // Play build: no device admin, no settings guard (Play policy), so nothing to show here.
+        if (Flavor.PLAY) {
+            a.show(root);
+            return;
+        }
         root.addView(a.section("Protection"));
         boolean admin = adminOn(a);
         root.addView(Ui.left(a, admin
@@ -507,10 +512,6 @@ final class Strict {
                     + "any screen. Remove it: Settings > Accessibility > Focus Guard > shortcut off.", 14, Ui.RED);
             w.setTypeface(Typeface.DEFAULT_BOLD);
             root.addView(w);
-        }
-        if (Flavor.PLAY) {
-            a.show(root);
-            return;
         }
         root.addView(Ui.space(a, 12));
         root.addView(Ui.left(a, "In strict mode the screens that switch Focus Guard off (its accessibility "

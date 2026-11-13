@@ -8,3 +8,4 @@ build/
 keywords.local.json
 mac/Preferences/
 CLAUDE.md
+*.aab

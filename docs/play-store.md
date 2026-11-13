@@ -1,20 +1,38 @@
 # Google Play release checklist (non-root app)
 
-Status 2026-11-13: code is Play-ready on main (targetSdk 36, consent screen,
-`FG_PLAY=1` build). Publishing needs the owner's decisions at the end of this file.
+Status 2026-11-13: Play build done and emulator-tested (API 36): AAB builds and verifies,
+consent text, setup steps, Strict page without "Protection", Shorts pause in Chrome.
+Publishing needs the owner's decisions at the end of this file.
 
 ## Build
 
+One-time upload key (keep it out of the repo, back it up — losing it means a key reset request):
+
 ```sh
-cd android && FG_PLAY=1 FG_KEYSTORE=/path/upload.keystore FG_KS_PASS=... ./build.sh
+keytool -genkeypair -keystore ~/upload.keystore -alias upload -keyalg RSA -keysize 2048 -validity 10000
 ```
 
-- `FG_PLAY=1` → `Flavor.PLAY = true`: no settings guard (Play forbids using accessibility to
-  stop the user from turning an app off). Everything else is the same as the GitHub build.
-- Move `android/app/assets/keywords.local.json` out before building (personal entries).
-- Play wants an **AAB**, build.sh makes an APK. Needs `bundletool` (not installed here):
-  `aapt2 link --proto-format` → zip base module → `bundletool build-bundle`. To do once.
-- Use **Play App Signing**; the upload key is ours. Keep it out of the repo.
+Build:
+
+```sh
+cd android && FG_PLAY=1 FG_KEYSTORE=~/upload.keystore FG_KS_PASS=... FG_KS_ALIAS=upload ./build.sh
+```
+
+→ `android/FocusGuard-play.aab` (upload this) + `android/FocusGuard-play.apk` (same build, for a quick
+`adb install` test). Needs `bundletool` at `~/.cache/bundletool/bundletool.jar` (or `BUNDLETOOL=`).
+Bump `versionCode` in the manifest for every upload.
+
+Play build differences (`FG_PLAY=1` → `Flavor.PLAY`):
+
+| | GitHub build | Play build |
+|---|---|---|
+| Settings guard (strict mode blocks our accessibility/app-info pages) | yes | no — Play forbids using accessibility to stop users turning an app off |
+| Device admin (harder uninstall) | optional | removed (receiver dropped from the manifest) |
+| `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | yes (direct dialog) | removed; setup opens the battery settings list instead |
+| Consent text | mentions the settings guard | without it |
+| `keywords.local.json` | included if present | always left out |
+
+Use **Play App Signing**; we only hold the upload key.
 
 ## Store listing (draft)
 
@@ -73,19 +91,16 @@ Check rival claims again before using any of them in the listing (Play forbids f
 
 ## Other declarations
 
-- Device admin: optional, no policies, used only to make uninstall harder in strict mode.
-  Without it uninstall can't be blocked: Android 14+ hides the uninstall dialog from accessibility.
-  Play may question it — be ready to drop it from the Play build (`Flavor.PLAY`).
-- `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`: allowed use (the service must stay alive); explain in
-  the form if asked.
-- Privacy policy URL: publish `docs/privacy-policy.md` (e.g. GitHub Pages).
+- No device admin and no battery-exemption permission in the Play build (see table above).
+- Privacy policy URL: https://github.com/Al-Rasin/focus-guard/blob/main/docs/privacy-policy.md
 - Target audience: 18+ (adult blocking mentions adult content); not for children.
 
-## Assets to make
+## Assets
 
-- App icon 512×512 PNG (from `res/drawable/ic_fg.xml`).
-- Feature graphic 1024×500.
-- 4–8 phone screenshots: Home, pause screen, edit target, Stats, widget, consent.
+- `docs/play/icon-512.png` — app icon 512×512 (from `res/drawable/ic_fg.xml`).
+- `docs/play/feature-graphic.png` — 1024×500.
+- To do: 4–8 phone screenshots (ratio 2:1 or less; a 1080×2160 screen is fine): Home, pause
+  screen, edit target, Stats, widget, consent. Take them on the phone used for the video.
 
 ## New personal developer account
 
@@ -97,5 +112,4 @@ Closed test with **at least 12 testers for 14 days in a row** before production 
 2. LICENSE for the repo.
 3. Play developer account ($25) and 12 testers.
 4. Upload key + Play App Signing.
-5. Privacy policy URL.
-6. Keep device admin in the Play build or not.
+5. Accessibility video + screenshots.

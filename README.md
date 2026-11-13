@@ -111,10 +111,11 @@ No network access, no analytics, no accounts. Everything stays on the device.
 ## Building your own
 
 Signing uses a local `focusguard.keystore` that `build.sh` generates on first run. It is not in this repo.
-For a release key set `FG_KEYSTORE=/path/to.keystore FG_KS_PASS=...` (alias `fg`). Keep the key:
+For a release key set `FG_KEYSTORE=/path/to.keystore FG_KS_PASS=...` (alias `fg`, or set `FG_KS_ALIAS`). Keep the key:
 Android won't update an app signed with a different one.
 
-`FG_PLAY=1 ./build.sh` makes the Google Play build (no settings guard, which Play doesn't allow).
+`FG_PLAY=1 ./build.sh` makes the Google Play build, `FocusGuard-play.aab` (needs `bundletool`): no settings
+guard, device admin or battery-exemption permission, which Play doesn't allow or questions.
 See `docs/play-store.md` and `docs/privacy-policy.md`.
 
 ## License

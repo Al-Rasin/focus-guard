@@ -110,9 +110,11 @@ final class Setup {
                 box.addView(info);
             }
             step(a, box, "Battery: unrestricted", batteryOk(a), "Allow", () -> {
+                // Play build has no REQUEST_IGNORE_BATTERY_OPTIMIZATIONS (restricted use): open the list.
                 Intent i = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
                         Uri.parse("package:" + a.getPackageName()));
-                if (!open(a, i)) open(a, new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
+                if (Flavor.PLAY || !open(a, i))
+                    open(a, new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
             });
             if (needsAutostart()) {
                 boolean auto = p.getBoolean("autostart", false);
@@ -215,6 +217,11 @@ final class Setup {
             + "What it never does: screen content is not saved, sent or shared. Only counts and settings are "
             + "stored, on this phone. The app has no internet permission, no ads, no analytics, no account.";
 
+    /** Play build: no settings guard, so the consent must not mention it. */
+    static final String CONSENT_PLAY = CONSENT_TEXT
+            .replace("; and, in strict mode, whether Focus Guard's own settings pages are open.", ".")
+            .replace(", and in strict mode stop quick switch-offs.", ".");
+
     /**
      * Prominent disclosure + consent (Google Play accessibility policy): shown before any
      * accessibility step, needs an explicit "Agree"; "No thanks" leaves the app inert.
@@ -241,7 +248,7 @@ final class Setup {
             head.setTypeface(Typeface.DEFAULT_BOLD);
             box.addView(head);
             box.addView(Ui.space(a, 6));
-            box.addView(Ui.left(a, CONSENT_TEXT, 14, Ui.MUTED));
+            box.addView(Ui.left(a, Flavor.PLAY ? CONSENT_PLAY : CONSENT_TEXT, 14, Ui.MUTED));
             box.addView(Ui.space(a, 12));
             Button ok = Ui.button(a, "Agree", Ui.SKY, Ui.BG);
             ok.setOnClickListener(v -> {

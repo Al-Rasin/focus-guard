@@ -1,6 +1,6 @@
 # Focus Guard – Privacy Policy
 
-Last updated: 2026-11-12
+Last updated: 2026-11-13
 
 Focus Guard is a self-control app. It adds a pause before short-form video (YouTube Shorts,
 Facebook Reels, Instagram Reels, TikTok and apps you pick) and blocks adult websites.
@@ -39,6 +39,8 @@ This data stays in the app's private storage. Android backup is turned off for t
 | Run at startup | Restart the protection after a reboot |
 | Ignore battery optimisation | Keep the service from being killed |
 | Device admin (optional) | Makes uninstalling harder while strict mode is on. No admin policies are used |
+
+The Google Play version does not ask for the last two (battery optimisation, device admin).
 
 ## Children
 
