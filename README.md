@@ -3,6 +3,17 @@
 A self-control tool for **Android** (any phone; extra protection with root/Magisk) and **macOS (Chrome / Brave)**.
 It adds friction to short-form video and blocks adult content. It is hard to switch off on a weak moment.
 
+## Screenshots
+
+Android app, no root needed:
+
+<p>
+  <img src="screenshots/android-welcome.jpg" width="200" alt="Welcome screen">
+  <img src="screenshots/android-home.jpg" width="200" alt="Home with opens left and Focus now">
+  <img src="screenshots/android-apps.jpg" width="200" alt="Choosing apps and strictness">
+  <img src="screenshots/android-settings.jpg" width="200" alt="Settings">
+</p>
+
 ## What it does
 
 - **YouTube Shorts / Facebook Reels** (apps and browsers): a 5 s pause screen with "Go back" or "Open (15 min)".
