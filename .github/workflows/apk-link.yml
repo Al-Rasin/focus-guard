@@ -1,0 +1,48 @@
+# Keeps the README one-click link working:
+#   https://github.com/<repo>/releases/latest/download/Unswipe.apk
+# On every published release, copies its Unswipe-<version>.apk to a stable-named Unswipe.apk asset.
+# If the release has no APK (e.g. Mac-only), the newest Unswipe.apk from an older release is carried over.
+name: Stable APK link
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to fix (e.g. v1.5.0)
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  link:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - name: Upload Unswipe.apk
+        run: |
+          set -euo pipefail
+          assets() { gh release view "$1" --json assets -q '.assets[].name'; }
+          mkdir dl
+          apk=$(assets "$TAG" | grep -E '^Unswipe-.*\.apk$' | sort -V | tail -1 || true)
+          if [ -n "$apk" ]; then
+            gh release download "$TAG" -p "$apk" -D dl
+          else
+            echo "No Unswipe-*.apk in $TAG, carrying over the newest older one"
+            for t in $(gh release list --limit 50 --json tagName -q '.[].tagName'); do
+              [ "$t" = "$TAG" ] && continue
+              if assets "$t" | grep -qx 'Unswipe.apk'; then
+                gh release download "$t" -p Unswipe.apk -D dl
+                apk=Unswipe.apk; break
+              fi
+            done
+            [ -n "$apk" ] || { echo "No APK found in any release"; exit 1; }
+          fi
+          [ "$apk" = Unswipe.apk ] || cp "dl/$apk" dl/Unswipe.apk
+          gh release upload "$TAG" dl/Unswipe.apk --clobber
+          echo "Unswipe.apk on $TAG = $apk"
