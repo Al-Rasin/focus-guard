@@ -41,7 +41,8 @@ cd android && ./build.sh        # needs Android SDK build-tools 35 + platform 36
 
 ### Without root
 
-Install `android/FocusGuard.apk` and open it. A setup checklist walks through accessibility
+Download **Unswipe** (no-root build) from [Releases](https://github.com/Al-Rasin/focus-guard/releases/latest), or build
+`android/FocusGuard.apk` yourself, and open it. A setup checklist walks through accessibility
 (Android 13+: App info → ⋮ → "Allow restricted settings" first), battery, autostart (MIUI, Samsung, Oppo,
 Vivo, Huawei), MIUI "pop-ups in background" and notifications. If Android stops the service, a "tap to fix"
 notification appears. If the pause screen can't open (pop-ups blocked), the Short is closed instead of playing.
