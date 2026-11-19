@@ -3,6 +3,12 @@
 A self-control tool for **Android** (any phone; extra protection with root/Magisk) and **macOS (Chrome / Brave)**.
 It adds friction to short-form video and blocks adult content. It is hard to switch off on a weak moment.
 
+## Download
+
+**[⬇ Download Unswipe for Android (APK)](https://github.com/Al-Rasin/focus-guard/releases/latest/download/Unswipe.apk)** — no root needed, Android 8+.
+Open the file on your phone to install, then follow the setup in the app
+(Android 13+: if the Accessibility switch is greyed out, App info → ⋮ → "Allow restricted settings").
+
 ## Screenshots
 
 Android app, no root needed:
