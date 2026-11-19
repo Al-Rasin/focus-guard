@@ -34,7 +34,7 @@ Play build differences (`FG_PLAY=1` → `Flavor.PLAY`):
 | | GitHub build | Play build |
 |---|---|---|
 | Settings guard (strict mode blocks our accessibility/app-info pages) | yes | no — Play forbids using accessibility to stop users turning an app off |
-| Device admin (harder uninstall) | optional | removed (receiver dropped from the manifest) |
+| Device admin (harder uninstall) | optional | optional, opt-in "Block uninstall" (no policies; turned off normally in Settings > Device admin apps) |
 | `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | yes (direct dialog) | removed; setup opens the battery settings list instead |
 | Consent text | mentions the settings guard | without it |
 | `keywords.local.json` | included if present | always left out |
@@ -131,7 +131,7 @@ Check rival claims again before using any of them in the listing (Play forbids f
 
 ## Other declarations
 
-- No device admin and no battery-exemption permission in the Play build (see table above).
+- No battery-exemption permission in the Play build. Device admin is opt-in, uses no policies, only makes uninstall a 2-step action; disclose it in the listing. Review risk: Play may question it — drop the receiver again in build.sh if rejected.
 - Privacy policy URL: https://github.com/Al-Rasin/focus-guard/blob/main/docs/privacy-policy.md
 - Target audience: 18+ (adult blocking mentions adult content); not for children.
 

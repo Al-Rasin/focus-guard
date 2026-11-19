@@ -178,6 +178,8 @@ final class Stats {
         lp2.topMargin = Ui.dp(a, 10);
         root.addView(r2, lp2);
 
+        whyCard(a, m, root);
+
         // Per-day list, newest first; days without any data are skipped.
         Calendar c = Clock.calendar(a);
         SimpleDateFormat f = new SimpleDateFormat("EEEE, d MMM", Locale.US);
@@ -210,6 +212,45 @@ final class Stats {
         }
     }
 
+    /** Reasons typed (or tapped) on the pause screen in the last 7 days, as bars. */
+    private static void whyCard(Activity a, MainActivity m, LinearLayout root) {
+        java.util.List<Object[]> why = new Limits(a).whyCounts(Clock.now(a) - 7 * 86_400_000L);
+        if (why.isEmpty()) return;
+        root.addView(m.section("Why you opened"));
+        LinearLayout list = Ui.card(a);
+        int max = (Integer) why.get(0)[1], total = 0;
+        for (Object[] o : why) total += (Integer) o[1];
+        int shown = Math.min(5, why.size());
+        for (int i = 0; i < shown; i++) {
+            Object[] o = why.get(i);
+            int n = (Integer) o[1];
+            LinearLayout r = Ui.row(a);
+            r.addView(Ui.left(a, (String) o[0], 15, Ui.WHITE), Ui.grow());
+            r.addView(Ui.number(a, String.valueOf(n), 15, Ui.MUTED));
+            list.addView(r, Ui.wide());
+            LinearLayout track = Ui.row(a);
+            track.setBackground(Ui.round(a, Ui.SURF3, 3));
+            android.view.View fill = new android.view.View(a);
+            fill.setBackground(Ui.round(a, i == 0 ? Ui.SKY : Ui.SKY_SOFT, 3));
+            float f = n / (float) max;
+            track.addView(fill, new LinearLayout.LayoutParams(0, -1, f));
+            track.addView(new android.view.View(a), new LinearLayout.LayoutParams(0, -1, 1f - f));
+            LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-1, Ui.dp(a, 6));
+            tp.topMargin = Ui.dp(a, 6);
+            tp.bottomMargin = Ui.dp(a, i == shown - 1 ? 2 : 14);
+            list.addView(track, tp);
+        }
+        String top = (String) why.get(0)[0];
+        String low = top.toLowerCase(Locale.ROOT);
+        int pct = Math.round(100f * max / total);
+        String tip = low.contains("bored") || low.contains("habit")
+                ? pct + "% of opens were \"" + top + "\". Next time, try one thing from \"Do this instead\"."
+                : pct + "% of opens were \"" + top + "\".";
+        list.addView(Ui.space(a, 10));
+        list.addView(Ui.left(a, tip, 13, Ui.DIM));
+        root.addView(list, Ui.wide());
+    }
+
     private static android.view.View gap(Context a) {
         android.view.View v = new android.view.View(a);
         v.setLayoutParams(new LinearLayout.LayoutParams(Ui.dp(a, 10), 1));
@@ -219,12 +260,7 @@ final class Stats {
     /** Hero: minutes in the last 7 days, change vs the week before, and how often the pause won. */
     private static LinearLayout weekCard(Context a, Day week, Day before) {
         LinearLayout card = Ui.column(a);
-        android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable(
-                android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
-                new int[]{android.graphics.Color.parseColor("#13324A"), android.graphics.Color.parseColor(Ui.SURF1)});
-        g.setCornerRadius(Ui.dp(a, 28));
-        g.setStroke(Ui.dp(a, 1), android.graphics.Color.parseColor("#1F3B52"));
-        card.setBackground(g);
+        card.setBackground(Ui.hero(a, 28));
         int pad = Ui.dp(a, 20);
         card.setPadding(pad, pad, pad, pad);
 
@@ -251,7 +287,7 @@ final class Stats {
         card.addView(Ui.space(a, 16));
 
         android.view.View line = new android.view.View(a);
-        line.setBackgroundColor(android.graphics.Color.parseColor("#1F3B52"));
+        line.setBackgroundColor(android.graphics.Color.parseColor(Ui.HERO_LINE));
         card.addView(line, new LinearLayout.LayoutParams(-1, 1));
         card.addView(Ui.space(a, 14));
         LinearLayout nums = Ui.row(a);

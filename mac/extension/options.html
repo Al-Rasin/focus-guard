@@ -3,43 +3,63 @@
 <head>
 <meta charset="utf-8">
 <title>Focus Guard settings</title>
+<link rel="stylesheet" href="ui.css">
 <style>
-  body { margin: 0; background: #0E1116; color: #AEB6C2; font: 15px -apple-system, system-ui, sans-serif; }
-  main { max-width: 640px; margin: 0 auto; padding: 32px 20px 60px; }
-  h1 { color: #fff; font-size: 26px; margin: 0 0 6px; }
-  h2 { color: #7DD3FC; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; margin: 28px 0 8px; }
-  .card { background: #161B22; border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; }
-  .card h3 { color: #fff; margin: 0 0 10px; font-size: 17px; display: flex; justify-content: space-between; }
-  label { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; gap: 12px; }
-  input[type=number] { width: 70px; }
-  input[type=text], textarea { width: 100%; box-sizing: border-box; }
-  input, textarea { background: #0E1116; color: #fff; border: 1px solid #2A313C; border-radius: 8px; padding: 6px 8px;
-                    font: inherit; }
-  .pending { color: #FBBF24; font-size: 13px; margin-top: 6px; }
-  button { background: #7DD3FC; color: #0E1116; border: 0; border-radius: 12px; padding: 10px 16px; font-size: 15px;
-           cursor: pointer; margin: 4px 8px 4px 0; }
-  button.alt { background: #1F2937; color: #fff; }
-  #msg { color: #7DD3FC; margin-top: 10px; min-height: 1.2em; }
-  .muted { font-size: 13px; }
+  main { max-width: 640px; margin: 0 auto; padding: 40px 20px 80px; }
+  h1 { font-size: 34px; font-weight: 700; margin: 0 0 6px; letter-spacing: -.01em; }
+  .lead { color: var(--muted); font-size: 15px; margin-bottom: 8px; }
+  h2 { font-size: 13px; font-weight: 400; letter-spacing: .02em; text-transform: uppercase; color: var(--muted);
+       margin: 30px 16px 7px; }
+  .note { color: var(--muted); font-size: 13px; margin: 7px 16px 0; }
+  .group { background: var(--surf1); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+           backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4); }
+  .group + .group { margin-top: 14px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px;
+         padding: 6px 16px; position: relative; }
+  .row + .row::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; height: 1px; background: var(--sep); }
+  .row.head { font-size: 17px; font-weight: 600; }
+  .row.wrap { flex-wrap: wrap; padding: 10px 16px; }
+  .row.wrap > input { width: 100%; box-sizing: border-box; }
+  .row input[type=number] { width: 76px; text-align: right; padding: 7px 10px; }
+  .row .seg { min-width: 240px; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .pending { color: var(--orange); font-size: 13px; }
+  textarea { width: 100%; box-sizing: border-box; display: block; border: 0; border-radius: 0; background: transparent;
+             padding: 12px 16px; resize: vertical; }
+  .actions { display: flex; gap: 10px; margin-top: 16px; }
+  .actions .btn { width: auto; flex: 1; }
+  #msg { color: var(--sky-soft); margin: 12px 16px 0; min-height: 1.2em; }
 </style>
 </head>
 <body>
 <main>
   <h1>Focus Guard</h1>
-  <div class="muted">Stricter changes apply at once. Looser ones wait 24 h. Adult blocking is always on.</div>
-  <h2>Targets</h2>
+  <div class="lead">Stricter changes apply at once. Looser ones wait 24 h. Adult blocking is always on.</div>
   <div id="cats"></div>
+
+  <h2>Pause screen</h2>
+  <div class="group">
+    <div class="row"><span>Style</span><div class="seg" id="guide"></div></div>
+    <div class="row"><span>Breathing pace<div class="sub" id="paceInfo"></div></span><div class="seg" id="pace"></div></div>
+    <div class="row"><span>Ask a question</span><input type="checkbox" class="switch" id="guide_q"></div>
+  </div>
+  <div class="note">Applies at once.</div>
+
   <h2>Do this instead</h2>
-  <div class="muted">One idea per line. The pause page shows one at random.</div>
-  <textarea id="swaps" rows="4"></textarea>
-  <div><button id="save">Save</button></div>
+  <div class="group"><textarea id="swaps" rows="4" placeholder="Go for a walk"></textarea></div>
+  <div class="note">One idea per line. The pause page shows one at random.</div>
+  <div class="actions"><button class="btn primary" id="save">Save</button></div>
+
   <h2>Backup</h2>
-  <div class="muted">Same file as the Android app. Only YouTube Shorts, Facebook Reels and Facebook are used here.</div>
-  <button class="alt" id="export">Save settings to a file</button>
-  <button class="alt" id="import">Load settings from a file</button>
+  <div class="actions">
+    <button class="btn tinted" id="export">Save to a file</button>
+    <button class="btn tinted" id="import">Load from a file</button>
+  </div>
+  <div class="note">Same file as the Android app. Only YouTube Shorts, Facebook Reels and Facebook are used here.</div>
   <input type="file" id="file" accept=".json,application/json" hidden>
   <div id="msg"></div>
 </main>
+<script src="guide.js"></script>
 <script src="options.js"></script>
 </body>
 </html>

@@ -22,14 +22,13 @@ if $PLAY; then
     cp -R app/src app/res $OUT/play/
     grep -rl "Focus Guard" $OUT/play | xargs sed -i '' "s/Focus Guard/$PLAY_NAME/g"
     RENAME=(--rename-manifest-package $PLAY_PKG)
-    # No device admin receiver and no REQUEST_IGNORE_BATTERY_OPTIMIZATIONS (Play restricted use).
+    # No REQUEST_IGNORE_BATTERY_OPTIMIZATIONS (Play restricted use). Device admin stays: opt-in "Block uninstall".
     MANIFEST=$OUT/AndroidManifest.xml
     python3 - app/AndroidManifest.xml $MANIFEST $PLAY_NAME <<'PY'
 import re, sys
 s = open(sys.argv[1]).read().replace('Focus Guard', sys.argv[3])
 s = re.sub(r'\n *<uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />', '', s)
-s, n = re.subn(r'\n *<receiver\s+android:name="\.Admin".*?</receiver>', '', s, flags=re.S)
-assert n == 1 and 'BATTERY' not in s, 'manifest filter failed'
+assert 'BATTERY' not in s and '.Admin' in s, 'manifest filter failed'
 open(sys.argv[2], 'w').write(s)
 PY
 fi

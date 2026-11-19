@@ -41,12 +41,57 @@ final class Config {
     static Config load(Context ctx, String cat) {
         Config c = new Config(cat);
         String raw = prefs(ctx).getString(cat, null);
-        if (raw == null) return c;
+        if (raw == null && migrate(ctx)) raw = prefs(ctx).getString(cat, null);
+        if (raw == null) {
+            // Built-ins are suggestions: off until the user turns them on.
+            if (java.util.Arrays.asList(Limits.BUILTIN).contains(cat)) c.enabled = false;
+            return c;
+        }
         try {
             c.fromJson(new JSONObject(raw));
         } catch (Exception ignored) {
         }
         return c;
+    }
+
+    private static boolean migrated;
+
+    /**
+     * Built-ins used to default to on. Users from before that change keep them on: their unsaved
+     * built-ins are written as enabled once. Returns true if anything was written.
+     */
+    private static synchronized boolean migrate(Context ctx) {
+        if (migrated) return false;
+        migrated = true;
+        SharedPreferences p = prefs(ctx);
+        if (p.getBoolean("defaults_off", false)) return false;
+        boolean old = Setup.welcomed(ctx)
+                || !ctx.getSharedPreferences("limits", Context.MODE_PRIVATE).getAll().isEmpty();
+        SharedPreferences.Editor e = p.edit().putBoolean("defaults_off", true);
+        boolean wrote = false;
+        if (old) {
+            for (String cat : Limits.BUILTIN) {
+                if (p.getString(cat, null) != null) continue;
+                e.putString(cat, new Config(cat).toJson().toString());
+                wrote = true;
+            }
+        }
+        e.commit();
+        return wrote;
+    }
+
+    private static final java.util.HashMap<String, Object[]> CACHE = new java.util.HashMap<>();
+
+    /** Read-only shared copy for hot paths (accessibility scans); re-parsed only when the stored JSON changes. Never mutate it. */
+    static Config peek(Context ctx, String cat) {
+        String raw = prefs(ctx).getString(cat, null);
+        synchronized (CACHE) {
+            Object[] e = CACHE.get(cat);
+            if (e != null && (e[0] == raw || (raw != null && raw.equals(e[0])))) return (Config) e[1];
+            Config c = load(ctx, cat);
+            CACHE.put(cat, new Object[]{raw, c});
+            return c;
+        }
     }
 
     void save(Context ctx) {

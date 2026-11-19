@@ -1,5 +1,5 @@
 // Time-left tab on the screen edge over Shorts/Reels/Facebook while an open is running (same as Android's
-// SessionTimer): pause-screen colours, red and pulsing in the last minute. Drag it to move it:
+// SessionTimer): glass look like the pause page, red and pulsing in the last minute. Drag it to move it:
 // it snaps to the nearer side and the spot is remembered (timer_pos in storage).
 // When the window runs out on screen, ask the background to gate this tab again.
 // Same patterns as background.js; first match wins (Reels before the rest of Facebook).
@@ -22,8 +22,8 @@ function dock() {
   t.right = pos.right ? "0" : "auto";
   t.top = `${pos.y * 100}%`;
   t.borderRadius = pos.right ? "16px 0 0 16px" : "0 16px 16px 0";
-  t.borderLeftWidth = pos.right ? "2px" : "0";
-  t.borderRightWidth = pos.right ? "0" : "2px";
+  t.borderLeftWidth = pos.right ? "1px" : "0";
+  t.borderRightWidth = pos.right ? "0" : "1px";
   t.padding = pos.right ? "8px 12px 8px 14px" : "8px 14px 8px 12px";
 }
 
@@ -50,10 +50,13 @@ function show(time, warn) {
   if (!tab) {
     tab = document.createElement("div");
     tab.innerHTML = "<style>@keyframes fg-pulse{to{opacity:.55}}</style><b></b><span></span>";
-    tab.style.cssText = "position:fixed;z-index:2147483647;border:2px solid;cursor:grab;user-select:none;" +
-      "display:flex;flex-direction:column;align-items:center;font-family:system-ui,sans-serif";
-    tab.querySelector("b").style.cssText = "font-size:22px;line-height:1.2";
-    tab.querySelector("span").style.cssText = "font-size:11px";
+    tab.style.cssText = "position:fixed;z-index:2147483647;border:1px solid;cursor:grab;user-select:none;" +
+      "display:flex;flex-direction:column;align-items:center;" +
+      "font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif;" +
+      "-webkit-backdrop-filter:blur(20px) saturate(1.4);backdrop-filter:blur(20px) saturate(1.4);" +
+      "box-shadow:0 8px 24px rgba(0,0,0,.35)";
+    tab.querySelector("b").style.cssText = "font-size:22px;font-weight:600;line-height:1.2;font-variant-numeric:tabular-nums";
+    tab.querySelector("span").style.cssText = "font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase";
     tab.addEventListener("pointerdown", drag);
     document.documentElement.appendChild(tab);
     dock();
@@ -61,9 +64,9 @@ function show(time, warn) {
   tab.querySelector("b").textContent = time;
   tab.querySelector("span").textContent = warn ? "last min" : "left";
   Object.assign(tab.style, warn
-    ? { background: "#F87171", borderColor: "#F87171", color: "#0E1116", animation: "fg-pulse .6s ease-in-out infinite alternate" }
-    : { background: "rgba(14,17,22,.95)", borderColor: "#7DD3FC", color: "#7DD3FC", animation: "none" });
-  tab.querySelector("span").style.color = warn ? "#0E1116" : "#AEB6C2";
+    ? { background: "#FF453A", borderColor: "#FF453A", color: "#fff", animation: "fg-pulse .6s ease-in-out infinite alternate" }
+    : { background: "rgba(10,14,31,.82)", borderColor: "rgba(255,255,255,.16)", color: "#64D2FF", animation: "none" });
+  tab.querySelector("span").style.color = warn ? "rgba(255,255,255,.85)" : "rgba(235,235,245,.62)";
 }
 
 let running = false; // an open was running on this page at the last tick

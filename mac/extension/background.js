@@ -20,13 +20,6 @@ const LABELS = { shorts: "YouTube Shorts", reels: "Facebook Reels", facebook: "F
 const HOME = { shorts: "https://www.youtube.com/", reels: "https://www.facebook.com/messages/",
                facebook: "https://www.facebook.com/messages/" };
 
-// ---- limits (chrome.storage.local, keys like 20260928_shorts) ----
-
-function today() {
-  const d = new Date();
-  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
-}
-
 // ---- settings ----
 
 function withDefaults(c) {
@@ -120,14 +113,43 @@ async function cfg(cat) {
 // ---- limits (chrome.storage.local, keys like 20260928_shorts) ----
 
 function today() {
-  const d = new Date();
+  return dayKey(new Date());
+}
+
+function dayKey(d) {
   return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// When a closed category opens again: end of the schedule window, end of the cooldown, or midnight.
+function reopenAt(c, scheduled, left, canExtend, last) {
+  const now = new Date();
+  if (scheduled) {
+    const m = now.getHours() * 60 + now.getMinutes();
+    let best = Infinity;
+    for (const w of c.schedule) {
+      const [a, b] = parseWindow(w);
+      if (a === b || !(a < b ? m >= a && m < b : m >= a || m < b)) continue;
+      const end = new Date(now);
+      end.setHours(0, b, 0, 0);
+      if (end <= now) end.setDate(end.getDate() + 1);
+      best = Math.min(best, +end);
+    }
+    return Number.isFinite(best) ? best : 0;
+  }
+  if (left > 0) return last + c.cooldown_min * 60000;
+  if (canExtend) return 0;
+  const mid = new Date(now);
+  mid.setHours(24, 0, 0, 0);
+  return +mid;
 }
 
 async function state(cat) {
   const c = await cfg(cat);
   const k = today();
-  const s = await chrome.storage.local.get([`${k}_${cat}`, `${k}_ext_${cat}`, `until_${cat}`, `last_${cat}`, "swaps"]);
+  const week = [];
+  for (let i = 0; i < 7; i++) week.push(dayKey(new Date(Date.now() - i * 86400000)));
+  const s = await chrome.storage.local.get([`${k}_${cat}`, `${k}_ext_${cat}`, `${k}_min_${cat}`, `until_${cat}`,
+                                           `last_${cat}`, "swaps", ...week.map(d => `${d}_skip_${cat}`)]);
   const used = s[`${k}_${cat}`] || 0;
   const ext = s[`${k}_ext_${cat}`] || 0;
   const total = c.opens + c.extend.opens * ext;
@@ -135,19 +157,43 @@ async function state(cat) {
   const left = scheduled ? 0 : Math.max(0, total - used);
   const canExtend = !scheduled && left === 0 && c.extend.opens > 0 && ext < c.extend.max
       && new Date().getHours() < c.extend.cutoff;
-  const waitMin = Math.max(0, Math.ceil(((s[`last_${cat}`] || 0) + c.cooldown_min * 60000 - Date.now()) / 60000));
+  const last = s[`last_${cat}`] || 0;
+  const waitMin = Math.max(0, Math.ceil((last + c.cooldown_min * 60000 - Date.now()) / 60000));
   const ideas = String(s.swaps || "").split("\n").map(l => l.trim()).filter(Boolean);
   return { cat, label: LABELS[cat], enabled: c.enabled, used, ext, total, left, canExtend, scheduled, waitMin,
            unlocked: Date.now() < (s[`until_${cat}`] || 0), pauseSeconds: Math.min(600, c.pause_s + c.pause_step_s * used),
            openMin: c.open_min, extendOpens: c.extend.opens, maxExtends: c.extend.max, home: HOME[cat],
+           askWhy: c.ask_why, minToday: s[`${k}_min_${cat}`] || 0,
+           weekSkips: week.reduce((n, d) => n + (s[`${d}_skip_${cat}`] || 0), 0),
+           reopenAt: reopenAt(c, scheduled, left, canExtend, last),
            idea: ideas.length ? ideas[Math.floor(Math.random() * ideas.length)] : "" };
 }
 
-async function open(cat) {
+// Reason log, same shape as the Android app's why_log: [ms, cat, why], newest last, capped.
+async function saveWhy(cat, why) {
+  why = String(why || "").trim().slice(0, 200);
+  if (!why) return;
+  const log = (await chrome.storage.local.get("why_log")).why_log || [];
+  log.push([Date.now(), cat, why]);
+  await chrome.storage.local.set({ why_log: log.slice(-300) });
+}
+
+// "Go back" / "I don't want to": an urge resisted, counted per day.
+async function skip(cat) {
+  const key = `${today()}_skip_${cat}`;
+  const n = (await chrome.storage.local.get(key))[key] || 0;
+  await chrome.storage.local.set({ [key]: n + 1 });
+  return state(cat);
+}
+
+async function open(cat, min, why) {
   const s = await state(cat);
   if (s.left === 0 || s.waitMin > 0) return s;
-  await chrome.storage.local.set({ [`${today()}_${cat}`]: s.used + 1, [`until_${cat}`]: Date.now() + s.openMin * 60000,
-                                   [`last_${cat}`]: Date.now() });
+  if (s.askWhy && String(why || "").trim().length < 3) return s;
+  const m = Math.min(s.openMin, Math.max(1, Math.round(+min) || s.openMin));
+  await saveWhy(cat, why);
+  await chrome.storage.local.set({ [`${today()}_${cat}`]: s.used + 1, [`until_${cat}`]: Date.now() + m * 60000,
+                                   [`last_${cat}`]: Date.now(), [`${today()}_min_${cat}`]: s.minToday + m });
   const after = await state(cat);
   chrome.notifications.create(`fg-${cat}`, {
     type: "basic", iconUrl: "icon.png",
@@ -242,7 +288,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   if (msg.type === "recheck" && sender.tab) return void check(sender.tab.id, sender.tab.url);
   // Settings changes only from the extension's own pages, never from content scripts.
   const own = sender.id === chrome.runtime.id && !sender.tab?.url?.startsWith("http");
-  const run = { state: () => state(msg.cat), open: () => open(msg.cat), extend: () => extend(msg.cat),
+  const run = { state: () => state(msg.cat), open: () => open(msg.cat, msg.min, msg.why), skip: () => skip(msg.cat), extend: () => extend(msg.cat),
                 settings: () => settings(),
                 save: own ? () => saveSettings(msg.targets) : null,
                 swaps: own ? () => chrome.storage.local.set({ swaps: String(msg.text || "").trim() }) : null,

@@ -1,5 +1,7 @@
 package com.alrasin.focusguard;
 
+import java.util.List;
+
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -86,7 +88,7 @@ final class Limits {
 
     /** Daily opens including extensions taken today. */
     int total(String cat) {
-        Config c = config(cat);
+        Config c = Config.peek(ctx, cat);
         return c.opens + c.extOpens * extends_(cat);
     }
 
@@ -95,11 +97,11 @@ final class Limits {
     }
 
     int pauseSeconds(String cat) {
-        return config(cat).pauseFor(used(cat));
+        return Config.peek(ctx, cat).pauseFor(used(cat));
     }
 
     boolean canExtend(String cat) {
-        Config c = config(cat);
+        Config c = Config.peek(ctx, cat);
         return left(cat) == 0 && c.extOpens > 0 && extends_(cat) < c.extMax
                 && Clock.calendar(ctx).get(Calendar.HOUR_OF_DAY) < c.extCutoff
                 && hardBlock(cat) == null;
@@ -164,7 +166,7 @@ final class Limits {
      */
     String hardBlock(String cat) {
         if (inFocus()) return "focus session until " + hhmm(focusUntil());
-        Config c = config(cat);
+        Config c = Config.peek(ctx, cat);
         Calendar now = Clock.calendar(ctx);
         if (c.inSchedule(now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)))
             return "blocked by your schedule";
@@ -175,7 +177,7 @@ final class Limits {
 
     /** Minutes still to wait before the next open, 0 if none. */
     int cooldownLeftMin(String cat) {
-        Config c = config(cat);
+        Config c = Config.peek(ctx, cat);
         if (c.cooldownMin <= 0) return 0;
         long next = Math.max(lastOpen(cat), unlockedUntil(cat)) + c.cooldownMin * 60_000L;
         long wait = next - now();
@@ -185,7 +187,7 @@ final class Limits {
 
     /** Length of the next open in ms: open_min, cut to what is left of the daily cap. */
     long openMs(String cat) {
-        Config c = config(cat);
+        Config c = Config.peek(ctx, cat);
         long ms = Math.max(1, c.openMin) * 60_000L;
         if (c.dailyCapMin > 0) ms = Math.min(ms, Math.max(0, c.dailyCapMin * 60L - secondsToday(cat)) * 1000L);
         return ms;
@@ -233,7 +235,45 @@ final class Limits {
     }
 
     void saveWhy(String cat, String why) {
-        prefs.edit().putString("why_" + cat, why).apply();
+        SharedPreferences.Editor e = prefs.edit().putString("why_" + cat, why);
+        if (!why.isEmpty()) {
+            // Reason log for Stats: [time, target, reason], newest last, capped.
+            try {
+                org.json.JSONArray log = new org.json.JSONArray(prefs.getString("why_log", "[]"));
+                log.put(new org.json.JSONArray().put(System.currentTimeMillis()).put(cat).put(why));
+                org.json.JSONArray keep = new org.json.JSONArray();
+                for (int i = Math.max(0, log.length() - WHY_KEEP); i < log.length(); i++) keep.put(log.get(i));
+                e.putString("why_log", keep.toString());
+            } catch (org.json.JSONException ignored) {
+                e.remove("why_log");
+            }
+        }
+        e.apply();
+    }
+
+    static final int WHY_KEEP = 300;
+    /** One-tap reasons on the pause screen. */
+    static final String[] QUICK_WHY = {"Bored", "Habit", "A message", "Looking for something", "Taking a break"};
+
+    /** Reasons given in the last {@code days} days, most common first: {reason, count}. */
+    List<Object[]> whyCounts(long since) {
+        java.util.Map<String, Object[]> m = new java.util.LinkedHashMap<>();
+        try {
+            org.json.JSONArray log = new org.json.JSONArray(prefs.getString("why_log", "[]"));
+            for (int i = 0; i < log.length(); i++) {
+                org.json.JSONArray r = log.getJSONArray(i);
+                if (r.getLong(0) < since) continue;
+                String w = r.getString(2).trim();
+                String k = w.toLowerCase(java.util.Locale.ROOT);
+                Object[] o = m.get(k);
+                if (o == null) m.put(k, new Object[]{w, 1});
+                else o[1] = (Integer) o[1] + 1;
+            }
+        } catch (org.json.JSONException ignored) {
+        }
+        List<Object[]> out = new java.util.ArrayList<>(m.values());
+        java.util.Collections.sort(out, (a, b) -> (Integer) b[1] - (Integer) a[1]);
+        return out;
     }
 
     String why(String cat) {
@@ -244,7 +284,7 @@ final class Limits {
     String summary() {
         StringBuilder sb = new StringBuilder();
         for (String cat : Targets.all(ctx)) {
-            if (!config(cat).enabled) continue;
+            if (!Config.peek(ctx, cat).enabled) continue;
             if (sb.length() > 0) sb.append("  ·  ");
             sb.append(label(ctx, cat)).append(' ').append(left(cat)).append('/').append(total(cat));
         }

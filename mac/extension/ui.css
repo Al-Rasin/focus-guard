@@ -1,0 +1,52 @@
+/* Shared look for the extension pages: same glass/iOS tokens as the Android app (Ui.java). */
+:root {
+  --sky: #0A84FF; --sky-soft: #64D2FF; --violet: #5E5CE6; --green: #30D158; --red: #FF453A; --orange: #FF9F0A;
+  --ink: #0A0E1F; --text: #FFFFFF; --muted: rgba(235, 235, 245, .62); --faint: rgba(235, 235, 245, .32);
+  --surf1: rgba(255, 255, 255, .07); --surf2: rgba(255, 255, 255, .11); --surf3: rgba(255, 255, 255, .16);
+  --line: rgba(255, 255, 255, .12); --sep: rgba(84, 84, 88, .55);
+  --sky-box: rgba(10, 132, 255, .16); --green-box: rgba(48, 209, 88, .14); --red-box: rgba(255, 69, 58, .14);
+  color-scheme: dark;
+}
+html { background: var(--ink); }
+body {
+  margin: 0; min-height: 100vh; color: var(--text);
+  font: 15px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background:
+    radial-gradient(42vmax 42vmax at 12% 8%, rgba(94, 92, 230, .38), transparent 70%),
+    radial-gradient(38vmax 38vmax at 92% 30%, rgba(10, 132, 255, .30), transparent 70%),
+    radial-gradient(46vmax 46vmax at 40% 105%, rgba(64, 200, 224, .20), transparent 70%),
+    linear-gradient(160deg, #0B1440 0%, #0A0E1F 60%, #070A16 100%);
+  background-attachment: fixed;
+}
+button { font: inherit; }
+.overline { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.glass { background: var(--surf1); border: 1px solid var(--line); border-radius: 16px;
+         backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4); }
+.btn { display: block; width: 100%; border: 0; border-radius: 14px; padding: 15px 16px; font-size: 17px;
+       font-weight: 600; cursor: pointer; transition: transform .12s, opacity .2s, background .2s; }
+.btn:active { transform: scale(.97); }
+.btn:disabled { opacity: .35; cursor: default; transform: none; }
+.btn.primary { background: #fff; color: #000; }
+.btn.tinted { background: var(--sky-box); color: var(--sky-soft); }
+.btn.plain { background: transparent; color: var(--sky-soft); font-weight: 500; }
+.btn.danger { background: var(--red-box); color: var(--red); }
+input[type=text], input[type=number], input:not([type]), textarea {
+  font: inherit; color: #fff; background: var(--surf2); border: 1px solid var(--line); border-radius: 12px;
+  padding: 11px 13px; outline: none;
+}
+input:focus, textarea:focus { border-color: var(--sky); }
+::placeholder { color: var(--faint); }
+/* iOS switch */
+.switch { appearance: none; -webkit-appearance: none; width: 51px; height: 31px; border-radius: 999px; margin: 0;
+          background: rgba(120, 120, 128, .32); position: relative; cursor: pointer; transition: background .25s;
+          flex: none; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%;
+                 background: #fff; box-shadow: 0 3px 8px rgba(0, 0, 0, .25); transition: transform .25s cubic-bezier(.3,.7,.3,1.2); }
+.switch:checked { background: var(--green); }
+.switch:checked::after { transform: translateX(20px); }
+/* segmented control */
+.seg { display: flex; background: rgba(118, 118, 128, .24); border-radius: 9px; padding: 2px; gap: 2px; }
+.seg button { flex: 1; border: 0; background: transparent; color: #fff; border-radius: 7px; padding: 6px 10px;
+              font-size: 13px; font-weight: 500; cursor: pointer; transition: background .2s; }
+.seg button.on { background: rgba(255, 255, 255, .22); box-shadow: 0 3px 8px rgba(0, 0, 0, .2); font-weight: 600; }

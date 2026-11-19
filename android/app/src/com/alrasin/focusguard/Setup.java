@@ -103,44 +103,99 @@ final class Setup {
                 && (!needsAutostart() || prefs(c).getBoolean("autostart", false));
     }
 
+    /** First run: the Welcome pages are shown until they are finished or skipped. */
+    static boolean welcomed(Context c) {
+        // Users who already gave consent (updated from an older build) never see it.
+        return prefs(c).getBoolean("welcomed", false) || prefs(c).getBoolean("disclosed", false);
+    }
+
+    static void setWelcomed(Context c) {
+        prefs(c).edit().putBoolean("welcomed", true).apply();
+    }
+
     static void addStatus(Activity a, LinearLayout root) {
         KeepAlive.schedule(a);
         SharedPreferences p = prefs(a);
-        if (!p.getBoolean("disclosed", false)) {
-            disclosure(a, root);
-            return;
-        }
         if (done(a)) {
             if (a instanceof MainActivity) ((MainActivity) a).hero(root);
             privateDns(a, root);
             return;
         }
-        LinearLayout box = box(a);
-        TextView head = Ui.left(a, "Finish setup", 17, Ui.WHITE);
-        head.setTypeface(Ui.weight(600));
-        box.addView(head);
-        box.addView(Ui.left(a, "Android stops apps it thinks are idle. Each step keeps Focus Guard running.",
-                14, Ui.MUTED));
+        boolean disclosed = p.getBoolean("disclosed", false);
+        String head, sub;
+        int page;
+        if (!disclosed && p.getBoolean("declined", false)) {
+            head = "Not active";
+            sub = "You said no to the Accessibility service, so nothing is blocked.";
+            page = Welcome.CONSENT;
+        } else if (!disclosed) {
+            head = "Not active yet";
+            sub = "Read how it works and agree to start.";
+            page = Welcome.CONSENT;
+        } else {
+            int[] n = steps(a, null);
+            head = "Protection is off";
+            sub = n[0] + " of " + n[1] + " steps done";
+            page = Welcome.TURN_ON;
+        }
+        LinearLayout box = Ui.column(a);
+        android.graphics.drawable.GradientDrawable g = Ui.round(a, Ui.AMBER_BOX, 20);
+        g.setStroke(Ui.dp(a, 1), android.graphics.Color.parseColor("#5C4712"));
+        box.setBackground(g);
+        int pad = Ui.dp(a, 16);
+        box.setPadding(pad, pad, pad, pad);
+        LinearLayout top = Ui.row(a);
+        TextView icon = Ui.text(a, "!", 18, "#1C1300");
+        icon.setTypeface(Ui.weight(700));
+        icon.setBackground(Ui.round(a, Ui.AMBER, 18));
+        top.addView(icon, new LinearLayout.LayoutParams(Ui.dp(a, 36), Ui.dp(a, 36)));
+        LinearLayout words = Ui.column(a);
+        words.setPadding(Ui.dp(a, 12), 0, 0, 0);
+        words.addView(Ui.title(a, head, 17));
+        words.addView(Ui.left(a, sub, 14, Ui.MUTED));
+        top.addView(words, Ui.grow());
+        box.addView(top);
+        box.addView(Ui.space(a, 12));
+        Button go = Ui.button(a, page == Welcome.CONSENT ? "Read & turn on" : "Finish setup", Ui.AMBER, "#1C1300");
+        go.setTypeface(Ui.weight(600));
+        go.setOnClickListener(v -> {
+            if (a instanceof MainActivity) ((MainActivity) a).welcome(page);
+        });
+        box.addView(go, Ui.wide());
+        LinearLayout.LayoutParams lp = Ui.wide();
+        lp.bottomMargin = Ui.dp(a, 12);
+        root.addView(box, lp);
+    }
+
+    /**
+     * The keep-alive steps, as rows with a live tick. Returns {done, total}. With box == null
+     * nothing is drawn, only counted.
+     */
+    static int[] steps(Activity a, LinearLayout box) {
+        SharedPreferences p = prefs(a);
+        int[] n = {0, 0};
         boolean viaRoot = rooted(a);
 
         if (!viaRoot) {
             boolean on = accessibilityOn(a);
             boolean running = GuardService.instance != null;
-            String accLabel = !on ? "Turn on Focus Guard in Accessibility"
+            String accLabel = !on ? "Turn on " + appName(a) + " in Accessibility"
                     : running ? "Accessibility service on"
                     : "Enabled but not running: turn it off and on again";
-            step(a, box, accLabel, on && running, "Open", () ->
+            step(a, box, n, accLabel, "Lets it see Shorts, Reels and websites", on && running, "Open", () ->
                     open(a, new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
-            if (!on && Build.VERSION.SDK_INT >= 33) {
-                TextView hint = Ui.left(a, "Greyed out (\"Restricted setting\")? App info → ⋮ menu → "
-                        + "Allow restricted settings, then try again.", 13, Ui.MUTED);
-                hint.setPadding(Ui.dp(a, 28), 0, 0, Ui.dp(a, 4));
-                box.addView(hint);
+            if (box != null && !on && Build.VERSION.SDK_INT >= 33) {
+                hint(a, box, "Greyed out (\"Restricted setting\")? App info → ⋮ menu → "
+                        + "Allow restricted settings, then try again.");
                 Button info = Ui.small(a, "App info");
                 info.setOnClickListener(v -> appInfo(a));
-                box.addView(info);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                lp.leftMargin = Ui.dp(a, 56);
+                lp.bottomMargin = Ui.dp(a, 8);
+                box.addView(info, lp);
             }
-            step(a, box, "Battery: unrestricted", batteryOk(a), "Allow", () -> {
+            step(a, box, n, "Battery: unrestricted", "So Android doesn't put it to sleep", batteryOk(a), "Allow", () -> {
                 // MIUI: its per-app page ("No restrictions"); the generic list redirects to an app list.
                 if (miuiBattery() && open(a, new Intent().setComponent(new ComponentName(
                         "com.miui.powerkeeper", "com.miui.powerkeeper.ui.HiddenAppsConfigActivity"))
@@ -155,14 +210,12 @@ final class Setup {
                 if (Flavor.PLAY || !open(a, i))
                     open(a, new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
             });
-            if (miuiBattery() && !batteryOk(a)) {
-                TextView hint = Ui.left(a, "Pick \"No restrictions\" on the next page.", 13, Ui.MUTED);
-                hint.setPadding(Ui.dp(a, 28), 0, 0, Ui.dp(a, 4));
-                box.addView(hint);
-            }
+            if (box != null && miuiBattery() && !batteryOk(a))
+                hint(a, box, "Pick \"No restrictions\" on the next page.");
             if (needsAutostart()) {
                 boolean auto = p.getBoolean("autostart", false);
-                step(a, box, "Autostart allowed (" + Build.MANUFACTURER + ")", auto, auto ? null : "Open", () -> {
+                step(a, box, n, "Autostart allowed", "Your phone (" + Build.MANUFACTURER + ") stops apps otherwise",
+                        auto, auto ? null : "Open", () -> {
                     autostart(a);
                     // Android can't tell us whether it worked; trust the user once they've been there.
                     p.edit().putBoolean("autostart", true).apply();
@@ -170,21 +223,18 @@ final class Setup {
             }
             if (xiaomi()) {
                 boolean pop = popupOk(a);
-                step(a, box, "Pop-ups in background allowed", pop, pop ? null : "Open", () -> {
+                step(a, box, n, "Pop-ups in background", "Needed to show the pause screen", pop,
+                        pop ? null : "Open", () -> {
                     if (!open(a, new Intent("miui.intent.action.APP_PERM_EDITOR").setComponent(new ComponentName(
                             "com.miui.securitycenter", "com.miui.permcenter.permissions.PermissionsEditorActivity"))
                             .putExtra("extra_pkgname", a.getPackageName()))) appInfo(a);
                     p.edit().putBoolean("popup_miui", true).apply();
                 });
-                if (!pop) {
-                    TextView hint = Ui.left(a, "Turn on \"Display pop-up windows while running in background\", "
-                            + "or the pause screen can't open.", 13, Ui.MUTED);
-                    hint.setPadding(Ui.dp(a, 28), 0, 0, Ui.dp(a, 4));
-                    box.addView(hint);
-                }
+                if (box != null && !pop)
+                    hint(a, box, "Turn on \"Display pop-up windows while running in background\".");
             }
         }
-        step(a, box, "Notifications allowed", notificationsOk(a), "Allow", () -> {
+        step(a, box, n, "Notifications allowed", "Shows opens left and warnings", notificationsOk(a), "Allow", () -> {
             // Android 13+: ask once with the system dialog; after a "Don't allow" only settings work.
             if (Build.VERSION.SDK_INT >= 33 && !prefs(a).getBoolean("notif_asked", false)) {
                 prefs(a).edit().putBoolean("notif_asked", true).apply();
@@ -194,9 +244,17 @@ final class Setup {
                         .putExtra(Settings.EXTRA_APP_PACKAGE, a.getPackageName()));
             }
         });
-        LinearLayout.LayoutParams lp = Ui.wide();
-        lp.bottomMargin = Ui.dp(a, 8);
-        root.addView(box, lp);
+        return n;
+    }
+
+    static String appName(Context c) {
+        return String.valueOf(c.getApplicationInfo().loadLabel(c.getPackageManager()));
+    }
+
+    private static void hint(Activity a, LinearLayout box, String s) {
+        TextView hint = Ui.left(a, s, 13, Ui.AMBER);
+        hint.setPadding(Ui.dp(a, 56), Ui.dp(a, 6), Ui.dp(a, 8), Ui.dp(a, 8));
+        box.addView(hint);
     }
 
     static final String DNS_HOST = "adult-filter-dns.cleanbrowsing.org";
@@ -250,25 +308,42 @@ final class Setup {
         return box;
     }
 
-    private static void step(Activity a, LinearLayout box, String label, boolean ok, String action, Runnable run) {
+    /** One step row: number/tick circle, label + why, action button. */
+    private static void step(Activity a, LinearLayout box, int[] n, String label, String why, boolean ok,
+                             String action, Runnable run) {
+        n[1]++;
+        if (ok) n[0]++;
+        if (box == null) return;
         LinearLayout row = Ui.row(a);
-        row.setPadding(0, Ui.dp(a, 10), 0, Ui.dp(a, 4));
-        TextView badge = Ui.text(a, ok ? "✓" : "", 13, Ui.BG);
-        badge.setTypeface(Ui.weight(600));
-        android.graphics.drawable.GradientDrawable g = Ui.round(a, ok ? Ui.GREEN : Ui.CARD, 12);
-        if (!ok) g.setStroke(Ui.dp(a, 2), android.graphics.Color.parseColor(Ui.DIM));
+        row.setBackground(Ui.outlined(a, ok ? Ui.SURF1 : Ui.SURF2, 16));
+        int pad = Ui.dp(a, 12);
+        row.setPadding(pad, pad, pad, pad);
+        TextView badge = Ui.text(a, ok ? "✓" : String.valueOf(n[1]), 14, ok ? Ui.GREEN_BOX : Ui.WHITE);
+        badge.setTypeface(Ui.weight(700));
+        android.graphics.drawable.GradientDrawable g = Ui.round(a, ok ? Ui.GREEN : Ui.SURF3, 16);
         badge.setBackground(g);
-        row.addView(badge, new LinearLayout.LayoutParams(Ui.dp(a, 24), Ui.dp(a, 24)));
-        row.addView(Ui.space(a, 0), new LinearLayout.LayoutParams(Ui.dp(a, 12), 1));
-        row.addView(Ui.left(a, label, 15, ok ? Ui.MUTED : Ui.WHITE), Ui.grow());
+        row.addView(badge, new LinearLayout.LayoutParams(Ui.dp(a, 32), Ui.dp(a, 32)));
+        LinearLayout words = Ui.column(a);
+        words.setPadding(Ui.dp(a, 12), 0, Ui.dp(a, 8), 0);
+        TextView t = Ui.left(a, label, 15, ok ? Ui.MUTED : Ui.WHITE);
+        t.setTypeface(Ui.weight(ok ? 400 : 600));
+        words.addView(t);
+        if (!ok) words.addView(Ui.left(a, why, 13, Ui.DIM));
+        row.addView(words, Ui.grow());
         if (!ok && action != null) {
             Button b = Ui.small(a, action);
-            b.setBackground(Ui.round(a, Ui.SKY, 14));
-            b.setTextColor(android.graphics.Color.parseColor(Ui.BG));
-            b.setOnClickListener(v -> run.run());
+            b.setBackground(Ui.round(a, Ui.SKY, 16));
+            b.setTextColor(android.graphics.Color.parseColor(Ui.ON_SKY));
+            b.setTypeface(Ui.weight(600));
+            b.setOnClickListener(v -> {
+                Ui.buzz(v, android.view.HapticFeedbackConstants.VIRTUAL_KEY);
+                run.run();
+            });
             row.addView(b);
         }
-        box.addView(row);
+        LinearLayout.LayoutParams lp = Ui.wide();
+        lp.bottomMargin = Ui.dp(a, 8);
+        box.addView(row, lp);
     }
 
     static final String CONSENT_TEXT =
@@ -288,51 +363,21 @@ final class Setup {
             .replace("; and, in strict mode, whether Focus Guard's own settings pages are open.", ".")
             .replace(", and in strict mode stop quick switch-offs.", ".");
 
-    /**
-     * Prominent disclosure + consent (Google Play accessibility policy): shown before any
-     * accessibility step, needs an explicit "Agree"; "No thanks" leaves the app inert.
-     */
-    private static void disclosure(Activity a, LinearLayout root) {
-        SharedPreferences p = prefs(a);
-        LinearLayout box = box(a);
-        if (p.getBoolean("declined", false)) {
-            TextView head = Ui.left(a, "Focus Guard is not active", 17, Ui.WHITE);
-            head.setTypeface(Ui.weight(600));
-            box.addView(head);
-            box.addView(Ui.space(a, 6));
-            box.addView(Ui.left(a, "You chose not to allow the Accessibility service. Without it Focus Guard "
-                    + "can't see Shorts, Reels or adult sites, so it does nothing.", 14, Ui.MUTED));
-            box.addView(Ui.space(a, 12));
-            Button again = Ui.button(a, "Read again", Ui.SKY, Ui.BG);
-            again.setOnClickListener(v -> {
-                p.edit().putBoolean("declined", false).apply();
-                a.recreate();
-            });
-            box.addView(again, Ui.wide());
-        } else {
-            TextView head = Ui.left(a, "Accessibility service: your consent", 17, Ui.WHITE);
-            head.setTypeface(Ui.weight(600));
-            box.addView(head);
-            box.addView(Ui.space(a, 6));
-            box.addView(Ui.left(a, Flavor.PLAY ? CONSENT_PLAY : CONSENT_TEXT, 14, Ui.MUTED));
-            box.addView(Ui.space(a, 12));
-            Button ok = Ui.button(a, "Agree", Ui.SKY, Ui.BG);
-            ok.setOnClickListener(v -> {
-                p.edit().putBoolean("disclosed", true).putBoolean("declined", false).apply();
-                a.recreate();
-            });
-            box.addView(ok, Ui.wide());
-            box.addView(Ui.space(a, 8));
-            Button no = Ui.button(a, "No thanks", Ui.CARD, Ui.WHITE);
-            no.setOnClickListener(v -> {
-                p.edit().putBoolean("declined", true).apply();
-                a.recreate();
-            });
-            box.addView(no, Ui.wide());
+    /** Consent sections: {title, body} from the "Title: body" paragraphs after the intro. */
+    static String[][] consentParts() {
+        String[] paras = (Flavor.PLAY ? CONSENT_PLAY : CONSENT_TEXT).split("\n\n");
+        String[][] out = new String[paras.length][];
+        for (int i = 0; i < paras.length; i++) {
+            int k = i == 0 ? -1 : paras[i].indexOf(": ");
+            out[i] = k < 0 ? new String[]{"", paras[i]}
+                    : new String[]{paras[i].substring(0, k), Character.toUpperCase(paras[i].charAt(k + 2))
+                    + paras[i].substring(k + 3)};
         }
-        LinearLayout.LayoutParams lp = Ui.wide();
-        lp.bottomMargin = Ui.dp(a, 8);
-        root.addView(box, lp);
+        return out;
+    }
+
+    static void agree(Context c, boolean yes) {
+        prefs(c).edit().putBoolean("disclosed", yes).putBoolean("declined", !yes).apply();
     }
 
     static void appInfo(Context c) {

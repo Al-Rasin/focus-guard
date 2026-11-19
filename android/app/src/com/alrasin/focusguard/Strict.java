@@ -1,7 +1,6 @@
 package com.alrasin.focusguard;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.admin.DevicePolicyManager;
 import android.content.ComponentName;
 import android.content.Context;
@@ -324,18 +323,15 @@ final class Strict {
 
     private static void askPin(Activity a, String title, Runnable ok) {
         EditText e = pinField(a);
-        new AlertDialog.Builder(a).setTitle(title).setView(e)
-                .setPositiveButton("OK", (d, w) -> {
-                    if (checkPin(a, e.getText().toString())) ok.run();
-                    else Toast.makeText(a, L.t(a, "Wrong PIN"), Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("Cancel", null).show();
+        Ui.alert(a, title, null, e, "OK", () -> {
+            if (checkPin(a, e.getText().toString())) ok.run();
+            else Toast.makeText(a, L.t(a, "Wrong PIN"), Toast.LENGTH_SHORT).show();
+        });
     }
 
     private static EditText pinField(Activity a) {
-        EditText e = new EditText(a);
+        EditText e = Ui.alertField(a, "PIN (4+ digits)");
         e.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
-        e.setHint("PIN (4+ digits)");
         return e;
     }
 
@@ -358,22 +354,20 @@ final class Strict {
         if (cats.isEmpty()) return;
         String[] names = new String[cats.size()];
         for (int i = 0; i < names.length; i++) names[i] = Limits.label(a, cats.get(i));
-        new AlertDialog.Builder(a).setTitle("Emergency open: which one?")
-                .setItems(names, (d, w) -> emergencyWait(a, cats.get(w)))
-                .setNegativeButton("Cancel", null).show();
+        Ui.sheet(a, "Emergency open: which one?", null, names, 0, w -> emergencyWait(a, cats.get(w)));
     }
 
     private static void emergencyWait(Activity a, String cat) {
-        TextView t = Ui.text(a, "", 18, Ui.WHITE);
-        int p = Ui.dp(a, 20);
-        t.setPadding(p, p, p, p);
-        AlertDialog d = new AlertDialog.Builder(a).setTitle("Wait " + EMERGENCY_WAIT_S + " seconds")
-                .setView(t).setCancelable(false)
-                .setPositiveButton("Open", null)
-                .setNegativeButton("Never mind", null).create();
-        d.show();
-        Button open = d.getButton(AlertDialog.BUTTON_POSITIVE);
-        open.setEnabled(false);
+        TextView t = Ui.text(a, "", 15, Ui.WHITE);
+        Ui.Alert al = Ui.alert(a, "Wait " + EMERGENCY_WAIT_S + " seconds", null, t, "Open", () -> {
+            prefs(a).edit().putLong("emergency", now(a)).apply();
+            new Limits(a).open(cat);
+            Toast.makeText(a, L.t(a, Limits.label(a, cat) + " open"), Toast.LENGTH_LONG).show();
+            restart(a);
+        });
+        android.app.Dialog d = al.dialog;
+        d.setCancelable(false);
+        al.enable(false);
         long end = SystemClock.elapsedRealtime() + EMERGENCY_WAIT_S * 1000L;
         Handler h = new Handler(Looper.getMainLooper());
         Runnable tick = new Runnable() {
@@ -386,18 +380,11 @@ final class Strict {
                     h.postDelayed(this, 250);
                 } else {
                     t.setText("Uses your emergency open for this week.");
-                    open.setEnabled(true);
+                    al.enable(true);
                 }
             }
         };
         tick.run();
-        open.setOnClickListener(v -> {
-            prefs(a).edit().putLong("emergency", now(a)).apply();
-            new Limits(a).open(cat);
-            d.dismiss();
-            Toast.makeText(a, L.t(a, Limits.label(a, cat) + " open"), Toast.LENGTH_LONG).show();
-            restart(a);
-        });
     }
 
     // ---- settings guard (used by GuardService) ------------------------------------------
@@ -451,20 +438,37 @@ final class Strict {
         applyDue(a);
         SharedPreferences p = prefs(a);
         LinearLayout root = a.page("Strict mode");
-        root.addView(Ui.left(a, "When on, anything that loosens your rules waits " + delayH(a)
-                + " h before it takes effect. Making rules stricter always works at once. "
-                + "Phones without root can't stop everything (safe mode, factory reset), "
-                + "but the delay gives your calmer self time to say no.", 14, Ui.MUTED));
-        root.addView(Ui.space(a, 12));
+        boolean on = on(a), leaving = p.contains("off_at");
 
-        if (p.contains("off_at")) {
+        // Status hero: what strict mode is doing right now.
+        LinearLayout hero = Ui.column(a);
+        hero.setBackground(Ui.hero(a, 18));
+        int hp = Ui.dp(a, 18);
+        hero.setPadding(hp, hp, hp, hp);
+        hero.addView(Ui.overline(a, on ? (leaving ? "ENDING SOON" : "ON") : "OFF",
+                on ? (leaving ? Ui.AMBER : Ui.GREEN) : Ui.MUTED));
+        hero.addView(Ui.space(a, 6));
+        TextView big = Ui.left(a, on ? (leaving ? "Ends " + when(p.getLong("off_at", 0))
+                : "Loosening waits " + delayH(a) + " h") : "Changes apply at once", 22, Ui.WHITE);
+        big.setTypeface(Ui.weight(700));
+        hero.addView(big);
+        hero.addView(Ui.space(a, 6));
+        hero.addView(Ui.left(a, "Making rules stricter always works at once. Loosening them waits, "
+                + "so your calmer self gets the final say.", 14, Ui.MUTED));
+        root.addView(hero, Ui.wide());
+
+        if (leaving) {
+            root.addView(Ui.space(a, 12));
             root.addView(note(a, "Turning off: takes effect " + when(p.getLong("off_at", 0)),
                     () -> {
                         p.edit().remove("off_at").apply();
                         a.refresh();
                     }));
         }
-        root.addView(a.toggle("Strict mode", on(a), b -> {
+
+        root.addView(a.section("Strict mode"));
+        LinearLayout g = a.group(root);
+        g.addView(a.toggle("Strict mode", on, b -> {
             if (b) {
                 p.edit().putBoolean("on", true).remove("off_at").apply();
                 Toast.makeText(a, L.t(a, "Strict mode on"), Toast.LENGTH_SHORT).show();
@@ -476,7 +480,7 @@ final class Strict {
             a.refresh();
         }));
 
-        root.addView(a.section("Delay"));
+        root.addView(a.section("Waiting time"));
         if (p.contains("delay_at")) {
             root.addView(note(a, "Delay " + p.getInt("delay_to", 24) + " h from " + when(p.getLong("delay_at", 0)),
                     () -> {
@@ -484,100 +488,90 @@ final class Strict {
                         a.refresh();
                     }));
         }
-        LinearLayout row = Ui.row(a);
-        for (int h : DELAYS) {
-            Button b = Ui.small(a, h + " h");
-            boolean cur = h == delayH(a);
-            b.setBackground(Ui.round(a, cur ? Ui.SKY : Ui.CARD, 14));
-            b.setTextColor(android.graphics.Color.parseColor(cur ? Ui.BG : Ui.WHITE));
-            b.setOnClickListener(v -> {
-                if (h >= delayH(a) || !on(a)) {
-                    p.edit().putInt("delay", h).remove("delay_at").remove("delay_to").apply();
-                } else {
-                    long at = at(a);
-                    p.edit().putLong("delay_at", at).putInt("delay_to", h).apply();
-                    Toast.makeText(a, L.t(a, "Shorter delay from " + when(at)), Toast.LENGTH_LONG).show();
-                }
-                a.refresh();
-            });
-            row.addView(b);
-            row.addView(Ui.space(a, 0), new LinearLayout.LayoutParams(Ui.dp(a, 6), 1));
+        LinearLayout d = a.group(root);
+        d.setPadding(Ui.dp(a, 14), Ui.dp(a, 14), Ui.dp(a, 14), Ui.dp(a, 14));
+        d.addView(Ui.left(a, "How long a looser rule waits before it takes effect.", 14, Ui.MUTED));
+        d.addView(Ui.space(a, 10));
+        String[] labels = new String[DELAYS.length];
+        int sel = 0;
+        for (int i = 0; i < DELAYS.length; i++) {
+            labels[i] = DELAYS[i] + " h";
+            if (DELAYS[i] == delayH(a)) sel = i;
         }
-        root.addView(row);
+        d.addView(Ui.segmented(a, labels, sel, i -> {
+            int h = DELAYS[i];
+            if (h == delayH(a)) return;
+            if (h > delayH(a) || !on(a)) {
+                p.edit().putInt("delay", h).remove("delay_at").remove("delay_to").apply();
+            } else {
+                long at = at(a);
+                p.edit().putLong("delay_at", at).putInt("delay_to", h).apply();
+                Toast.makeText(a, L.t(a, "Shorter delay from " + when(at)), Toast.LENGTH_LONG).show();
+            }
+            a.refresh();
+        }), Ui.wide());
 
-        root.addView(a.section("Partner PIN"));
-        root.addView(Ui.left(a, hasPin(a)
-                ? "Set. The PIN applies a waiting change right away. Only your partner should know it."
-                : "Let a friend type a PIN here. With it they can apply a waiting change at once.", 14, Ui.MUTED));
-        root.addView(Ui.space(a, 8));
-        Button pin = Ui.small(a, hasPin(a) ? "Change PIN" : "Set PIN");
-        pin.setOnClickListener(v -> {
+        root.addView(a.section("Help from a friend"));
+        LinearLayout f = a.group(root);
+        f.addView(a.navRow("Partner PIN", hasPin(a) ? "Applies a waiting change right away"
+                : "A friend's PIN can apply a waiting change at once", hasPin(a) ? "Set" : "Off", () -> {
             Runnable set = () -> {
                 EditText e = pinField(a);
-                new AlertDialog.Builder(a).setTitle("New PIN").setView(e)
-                        .setPositiveButton("Save", (d, w) -> {
-                            String s = e.getText().toString();
-                            if (s.length() < 4) {
-                                Toast.makeText(a, L.t(a, "At least 4 digits"), Toast.LENGTH_SHORT).show();
-                                return;
-                            }
-                            setPin(a, s);
-                            Toast.makeText(a, L.t(a, "PIN saved"), Toast.LENGTH_SHORT).show();
-                            a.refresh();
-                        })
-                        .setNegativeButton("Cancel", null).show();
+                Ui.alert(a, "New PIN", "Your partner types this to apply a waiting change.", e, "Save", () -> {
+                    String s = e.getText().toString();
+                    if (s.length() < 4) {
+                        Toast.makeText(a, L.t(a, "At least 4 digits"), Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    setPin(a, s);
+                    Toast.makeText(a, L.t(a, "PIN saved"), Toast.LENGTH_SHORT).show();
+                    a.refresh();
+                });
             };
             if (hasPin(a)) askPin(a, "Current PIN", set);
             else set.run();
-        });
-        root.addView(pin);
+        }));
 
-        root.addView(a.section("Emergency open"));
+        root.addView(a.section("Emergency"));
+        LinearLayout em = a.group(root);
         long next = emergencyNext(a);
-        root.addView(Ui.left(a, "One open of any target past every limit, once a week, after a "
-                + EMERGENCY_WAIT_S + " s wait." + (next > now(a) ? " Next: " + when(next) + "." : " Available."),
-                14, Ui.MUTED));
-        root.addView(Ui.space(a, 8));
-        Button em = Ui.small(a, "Emergency open");
-        em.setEnabled(next <= now(a));
-        em.setOnClickListener(v -> emergency(a));
-        root.addView(em);
+        boolean ready = next <= now(a);
+        em.addView(a.navRow("Emergency open", "One open past every limit, once a week, after a "
+                        + EMERGENCY_WAIT_S + " s wait", ready ? "Ready" : when(next),
+                ready ? () -> emergency(a) : null));
 
-        // Play build: no device admin, no settings guard (Play policy), so nothing to show here.
-        if (Flavor.PLAY) {
-            a.show(root);
-            return;
-        }
+        // Block uninstall (device admin, opt-in) in both builds; the Play build has no settings guard,
+        // so there turning it off is one extra step in Settings, not a lock.
         root.addView(a.section("Protection"));
+        LinearLayout pr = a.group(root);
         boolean admin = adminOn(a);
-        root.addView(Ui.left(a, admin
-                ? "Uninstall blocked: Focus Guard is a device admin. Strict mode keeps you off that page."
-                : "Make Focus Guard a device admin so it can't be uninstalled without first going "
-                + "through a page strict mode keeps you away from.", 14, Ui.MUTED));
-        if (!admin) {
-            root.addView(Ui.space(a, 8));
-            Button b = Ui.small(a, "Block uninstall");
-            b.setOnClickListener(v -> {
-                // Not via Setup.open: Android refuses ADD_DEVICE_ADMIN started as a new task.
+        pr.addView(a.navRow("Block uninstall", admin ? (Flavor.PLAY
+                        ? "On. To uninstall, first turn off Focus Guard in Settings > Security > Device admin apps"
+                        : "On: Focus Guard is a device admin")
+                : "Make Focus Guard a device admin, so it can't be uninstalled in one tap",
+                admin ? "On" : null, admin ? null : () -> {
+            // Not via Setup.open: Android refuses ADD_DEVICE_ADMIN started as a new task.
                 try {
                     a.startActivity(new Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
                             .putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin(a))
                             .putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, ADMIN_NOTE));
                 } catch (Exception ignored) {
                 }
-            });
-            root.addView(b);
-        }
-        if (shortcutRisk(a)) {
-            root.addView(Ui.space(a, 12));
+            }));
+        if (!Flavor.PLAY && shortcutRisk(a)) {
+            pr.addView(a.divider());
             TextView w = Ui.left(a, "The volume-key accessibility shortcut can turn Focus Guard off from "
                     + "any screen. Remove it: Settings > Accessibility > Focus Guard > shortcut off.", 14, Ui.RED);
-            w.setTypeface(Ui.weight(600));
-            root.addView(w);
+            w.setPadding(0, Ui.dp(a, 12), 0, Ui.dp(a, 12));
+            pr.addView(w);
         }
-        root.addView(Ui.space(a, 12));
-        root.addView(Ui.left(a, "In strict mode the screens that switch Focus Guard off (its accessibility "
-                + "page, App info, device admin, Private DNS) close as soon as they open.", 13, Ui.DIM));
+        TextView foot = Ui.left(a, Flavor.PLAY
+                ? "Phones can't stop everything (safe mode, factory reset), but the wait and the extra steps "
+                + "give you time to say no."
+                : "In strict mode the screens that switch Focus Guard off (its accessibility page, App info, "
+                + "device admin, Private DNS) close as soon as they open.", 13, Ui.DIM);
+        foot.setPadding(Ui.dp(a, 16), Ui.dp(a, 8), Ui.dp(a, 16), 0);
+        root.addView(foot);
         a.show(root);
     }
 }

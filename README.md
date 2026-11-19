@@ -36,6 +36,7 @@ Vivo, Huawei), MIUI "pop-ups in background" and notifications. If Android stops 
 notification appears. If the pause screen can't open (pop-ups blocked), the Short is closed instead of playing.
 
 - **Targets**: YouTube Shorts, Facebook Reels, facebook.com, Instagram Reels, TikTok, or any app (whole app).
+  The built-ins are suggestions: off on a fresh install until you pick them (first-run page or "Turn on" on Home).
 - **Per-target settings**: pause length (and growing pause), opens per day, minutes per open, daily time cap,
   cooldown between opens, max videos per open, extend rules, block hours, "why are you opening?" prompt,
   your own "do this instead" list on the pause screen.
@@ -101,6 +102,8 @@ The two extensions re-enable each other if one is turned off.
 Settings: right-click the Focus Guard icon → Options. Per target (Shorts, Reels, facebook.com): pause length,
 opens per day, minutes per open, cooldown, extend rules, block hours, time-left tab, "do this instead" ideas.
 Stricter changes apply at once, looser ones after 24 h. The same backup file as the Android app can be loaded here.
+The pause page looks like the Android one: a guide orb (breathe, look away or a mix; Options → Pause screen),
+reason chips, open-length choices, and a closed screen with a countdown to when it opens again.
 
 To remove: `sudo ./mac/uninstall.sh` schedules removal 24 h later (`cancel` withdraws it).
 
@@ -121,7 +124,8 @@ Android won't update an app signed with a different one.
 
 `FG_PLAY=1 ./build.sh` makes the Google Play build, `FocusGuard-play.aab`, named **Unswipe**
 (package `com.alrasin.unswipe`, so it can sit next to the root build) (needs `bundletool`): no settings
-guard, device admin or battery-exemption permission, which Play doesn't allow or questions.
+guard or battery-exemption permission, which Play doesn't allow or questions. Device admin stays as an
+opt-in "Block uninstall" switch (Strict page): uninstalling first needs turning it off in Settings.
 See `docs/play-store.md` and `docs/privacy-policy.md`.
 
 ## License

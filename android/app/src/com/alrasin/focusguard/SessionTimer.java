@@ -55,7 +55,7 @@ final class SessionTimer {
     void show(String cat, String pkg) {
         this.cat = cat;
         this.pkg = pkg;
-        Config c = limits.config(cat);
+        Config c = Config.peek(service, cat);
         why = c.askWhy ? limits.why(cat) : "";
         // With the tab turned off, still tick (daily time cap, expiry re-check), just invisibly.
         if (c.timer && view == null) create();

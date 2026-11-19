@@ -27,6 +27,10 @@ import java.util.Iterator;
 final class Backup {
     static final int EXPORT = 41, IMPORT = 42;
 
+    /** Look and pause-screen settings carried in the file (prefs "ui"). */
+    private static final String[] UI_INTS = {"blur", "clear", "palette", "guide", "pace"},
+            UI_BOOLS = {"guide_q", "guide_buzz"};
+
     private Backup() {
     }
 
@@ -64,8 +68,14 @@ final class Backup {
             for (String pkg : Targets.groupApps(a, cat)) ga.put(pkg);
             groups.put(id, new JSONObject().put("name", Targets.groupName(a, cat)).put("apps", ga));
         }
+        JSONArray hidden = new JSONArray();
+        for (String cat : Targets.hidden(a)) hidden.put(cat);
+        android.content.SharedPreferences p = a.getSharedPreferences("ui", Activity.MODE_PRIVATE);
+        JSONObject ui = new JSONObject().put("theme", Ui.themeName(a));
+        for (String k : UI_INTS) if (p.contains(k)) ui.put(k, p.getInt(k, 0));
+        for (String k : UI_BOOLS) if (p.contains(k)) ui.put(k, p.getBoolean(k, true));
         return new JSONObject().put("focusguard", 1).put("targets", targets).put("apps", apps).put("groups", groups)
-                .put("swaps", Config.swapsText(a));
+                .put("hidden", hidden).put("ui", ui).put("swaps", Config.swapsText(a));
     }
 
     private static String export(Activity a, Uri uri) {
@@ -140,6 +150,24 @@ final class Backup {
             }
             if (!"Saved".equals(Strict.save(a, c))) waiting = true;
             done++;
+        }
+        JSONArray hidden = j.optJSONArray("hidden");
+        if (hidden != null)
+            for (int i = 0; i < hidden.length(); i++) {
+                String cat = hidden.optString(i, "");
+                if (Arrays.asList(Limits.BUILTIN).contains(cat) && !Config.load(a, cat).enabled)
+                    Targets.setHidden(a, cat, true);
+            }
+        JSONObject ui = j.optJSONObject("ui");
+        if (ui != null) {
+            android.content.SharedPreferences.Editor e = a.getSharedPreferences("ui", Activity.MODE_PRIVATE).edit();
+            String theme = ui.optString("theme", "");
+            if (theme.equals("glass") || theme.equals("classic")) e.putString("theme", theme);
+            for (String k : UI_INTS) if (ui.has(k)) e.putInt(k, Math.max(0, Math.min(k.equals("guide") || k.equals("pace") ? 2 : 100, ui.optInt(k, 0))));
+            for (String k : UI_BOOLS) if (ui.has(k)) e.putBoolean(k, ui.optBoolean(k, true));
+            e.apply();
+            Ui.resetLoaded(a);
+            a.recreate();
         }
         String swaps = j.optString("swaps", "");
         if (!swaps.trim().isEmpty()) Config.saveSwaps(a, swaps);

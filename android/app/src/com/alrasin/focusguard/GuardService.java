@@ -83,6 +83,10 @@ public class GuardService extends AccessibilityService {
     private File alive;
     /** Packages worth scanning (targets + browsers + Telegram), refreshed on each heartbeat. */
     private Set<String> watched = new HashSet<>();
+    /** Targets and their packages, rebuilt on each heartbeat (refreshWatched) instead of per scan. */
+    private java.util.List<String> cats = new java.util.ArrayList<>();
+    private java.util.Map<String, Set<String>> catPkgs = new java.util.HashMap<>();
+    private static final Pattern URL_SEP = Pattern.compile("[./_-]");
     private long lastVideoAt;
     private String lastTrace;
 
@@ -174,8 +178,16 @@ public class GuardService extends AccessibilityService {
         w.addAll(BROWSERS);
         w.add(YOUTUBE);
         w.addAll(FACEBOOK);
-        for (String cat : Targets.all(this)) w.addAll(Targets.packages(this, cat));
+        java.util.List<String> cs = new java.util.ArrayList<>(Targets.all(this));
+        java.util.Map<String, Set<String>> cp = new java.util.HashMap<>();
+        for (String cat : cs) {
+            Set<String> p = Targets.packages(this, cat);
+            cp.put(cat, p);
+            w.addAll(p);
+        }
         if (guardSettings()) w.addAll(Strict.SETTINGS);
+        cats = cs;
+        catPkgs = cp;
         watched = w;
     }
 
@@ -185,8 +197,8 @@ public class GuardService extends AccessibilityService {
      */
     private void countVideo(String pkg) {
         String cat = timer == null ? null : timer.cat();
-        if (cat == null || !timer.running() || !Targets.packages(this, cat).contains(pkg)) return;
-        Config c = limits.config(cat);
+        if (cat == null || !timer.running() || !pkgsOf(cat).contains(pkg)) return;
+        Config c = Config.peek(this, cat);
         if (c.maxVideos <= 0 || wholeMode(cat)) return;
         long now = SystemClock.elapsedRealtime();
         if (now - lastVideoAt < 1000) return;
@@ -201,7 +213,12 @@ public class GuardService extends AccessibilityService {
     }
 
     private boolean wholeMode(String cat) {
-        return Targets.wholeOnly(cat) || "whole".equals(limits.config(cat).mode);
+        return Targets.wholeOnly(cat) || "whole".equals(Config.peek(this, cat).mode);
+    }
+
+    private Set<String> pkgsOf(String cat) {
+        Set<String> p = catPkgs.get(cat);
+        return p != null ? p : Targets.packages(this, cat);
     }
 
     /**
@@ -329,13 +346,13 @@ public class GuardService extends AccessibilityService {
     private String detect(String pkg) {
         String what = detectRaw(pkg);
         if (what == null || what.equals(ADULT)) return what;
-        return limits.config(what).enabled ? what : null;
+        return Config.peek(this, what).enabled ? what : null;
     }
 
     private String detectRaw(String pkg) {
         // Whole-app targets first: any screen of the app counts.
-        for (String cat : Targets.all(this)) {
-            if (Targets.packages(this, cat).contains(pkg) && wholeMode(cat) && limits.config(cat).enabled) return cat;
+        for (String cat : cats) {
+            if (pkgsOf(cat).contains(pkg) && wholeMode(cat) && Config.peek(this, cat).enabled) return cat;
         }
         if (pkg.equals(YOUTUBE)) {
             if (hasVisibleId(pkg, SHORTS_IDS)) return Limits.SHORTS;
@@ -353,15 +370,15 @@ public class GuardService extends AccessibilityService {
                 if (REELS_URL.matcher(url).find()) return Limits.REELS;
                 if (INSTA_REELS_URL.matcher(url).find()) return Limits.INSTAGRAM;
                 if (!typing && TIKTOK_SITE.matcher(url).find()) return Limits.TIKTOK;
-                if (!typing && YOUTUBE_SITE.matcher(url).find() && "whole".equals(limits.config(Limits.SHORTS).mode))
+                if (!typing && YOUTUBE_SITE.matcher(url).find() && "whole".equals(Config.peek(this, Limits.SHORTS).mode))
                     return Limits.SHORTS;
-                if (!typing && INSTA_SITE.matcher(url).find() && "whole".equals(limits.config(Limits.INSTAGRAM).mode))
+                if (!typing && INSTA_SITE.matcher(url).find() && "whole".equals(Config.peek(this, Limits.INSTAGRAM).mode))
                     return Limits.INSTAGRAM;
                 if (!typing && FACEBOOK_SITE.matcher(url).find() && !FACEBOOK_OK.matcher(url).find()) {
                     return Limits.FACEBOOK;
                 }
                 if (!typing && AdultDomains.blocked(url)) return ADULT;
-                if (keywords.match(url.replaceAll("[./_-]", " ")) != null) return ADULT;
+                if (keywords.match(URL_SEP.matcher(url).replaceAll(" ")) != null) return ADULT;
             }
         }
         return null;

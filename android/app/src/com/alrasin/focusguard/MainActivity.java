@@ -54,6 +54,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        Ui.theme(this);
+        Ui.backdrop(this);
         limits = new Limits(this);
         Ui.onBack(this, this::back);
     }
@@ -63,8 +65,28 @@ public class MainActivity extends Activity {
         super.onResume();
         front = this;
         Strict.applyDue(this);
-        if (isTab(screen)) openTab(screen);
+        if (screen.equals("home") && !Setup.welcomed(this) && !Setup.done(this)) welcome(Welcome.INTRO, 0);
+        else if (screen.equals("welcome")) welcome(welcomePage, 0); // back from a system setting
+        else if (isTab(screen)) openTab(screen);
         else if (screen.equals("strict")) strict(); // e.g. back from the device admin page
+    }
+
+    /** Welcome page shown while {@link #screen} is "welcome". */
+    private int welcomePage;
+
+    void welcome(int page) {
+        welcome(page, 0);
+    }
+
+    void welcome(int page, int dir) {
+        screen = "welcome";
+        welcomePage = page;
+        Welcome.show(this, page, dir);
+    }
+
+    /** Welcome finished or skipped. */
+    void leaveWelcome() {
+        openTab("home");
     }
 
     @Override
@@ -75,7 +97,9 @@ public class MainActivity extends Activity {
 
     /** Service bound/unbound: redraw Home so the setup card isn't stuck on "not running". */
     static void healthChanged() {
-        if (front != null && front.screen.equals("home")) front.openTab("home");
+        if (front == null) return;
+        if (front.screen.equals("home")) front.openTab("home");
+        else if (front.screen.equals("welcome") && front.welcomePage == Welcome.TURN_ON) front.welcome(Welcome.TURN_ON, 0);
     }
 
     @Override
@@ -91,6 +115,7 @@ public class MainActivity extends Activity {
     /** Re-render the current screen (after a strict-mode or language change). */
     void refresh() {
         if (screen.equals("strict")) strict();
+        else if (screen.equals("welcome")) welcome(welcomePage, 0);
         else if (screen.startsWith("edit:")) renderEdit(screen.substring(5));
         else if (screen.equals("pick")) picker();
         else if (screen.equals("build")) renderBuild();
@@ -109,7 +134,10 @@ public class MainActivity extends Activity {
 
     private void back() {
         if (screen.equals("home")) moveTaskToBack(true);
-        else if (isTab(screen)) openTab("home");
+        else if (screen.equals("welcome")) {
+            if (welcomePage == Welcome.INTRO || welcomePage == Welcome.TURN_ON) moveTaskToBack(true);
+            else welcome(welcomePage - 1, -1);
+        } else if (isTab(screen)) openTab("home");
         else if (screen.equals("build")) {
             if (buildCat != null) edit(buildCat);
             else picker();
@@ -139,50 +167,56 @@ public class MainActivity extends Activity {
             else if (hidden.contains(cat)) continue;
             (en ? on : off).add(cat);
         }
+        // Header: "YOUR LIMITS  5" + an Edit/Done pill.
         LinearLayout head = Ui.row(this);
-        head.addView(section("Your limits"), Ui.grow());
-        TextView editTop = Ui.text(this, homeEditing ? "Done" : "Edit", 14, Ui.SKY);
-        editTop.setTypeface(Ui.weight(600));
-        editTop.setPadding(Ui.dp(this, 12), Ui.dp(this, 28), Ui.dp(this, 12), Ui.dp(this, 10));
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.setPadding(Ui.dp(this, 4), Ui.dp(this, 28), 0, Ui.dp(this, 10));
+        head.addView(Ui.overline(this, "Your limits", Ui.MUTED));
+        if (!on.isEmpty()) {
+            TextView cnt = Ui.badge(this, String.valueOf(on.size()), Ui.MUTED, Ui.SURF2);
+            LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(-2, -2);
+            cl.leftMargin = Ui.dp(this, 8);
+            head.addView(cnt, cl);
+        }
+        head.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
+        TextView editTop = Ui.badge(this, homeEditing ? "Done" : "Edit",
+                homeEditing ? Ui.ON_SKY : Ui.SKY, homeEditing ? Ui.SKY : Ui.SKY_BOX);
+        editTop.setTextSize(13);
+        editTop.setPadding(Ui.dp(this, 14), Ui.dp(this, 6), Ui.dp(this, 14), Ui.dp(this, 6));
         editTop.setOnClickListener(v -> {
             homeEditing = !homeEditing;
             refreshHome();
         });
+        Ui.press(editTop);
         head.addView(editTop);
-        TextView addTop = Ui.text(this, "+ Add", 14, Ui.SKY);
-        addTop.setTypeface(Ui.weight(600));
-        addTop.setPadding(Ui.dp(this, 12), Ui.dp(this, 28), Ui.dp(this, 4), Ui.dp(this, 10));
-        addTop.setOnClickListener(v -> picker());
-        head.addView(addTop);
         root.addView(head, Ui.wide());
-        TextView hint = Ui.left(this, homeEditing ? "Tap Remove or Turn off on anything you don't want limited."
-                : "Tap to change a limit. Hold to remove it.", 13, Ui.DIM);
-        root.addView(hint, Ui.wide());
-        for (String cat : on) root.addView(targetCard(cat), card());
-        if (!off.isEmpty()) {
-            root.addView(section("Turned off"));
-            for (String cat : off) root.addView(targetCard(cat), card());
+        if (homeEditing) {
+            TextView hint = Ui.left(this, "Turn off or remove anything you don't want limited.", 13, Ui.DIM);
+            hint.setPadding(Ui.dp(this, 4), 0, 0, Ui.dp(this, 10));
+            root.addView(hint, Ui.wide());
         }
 
-        // Dashed "add" card, like an empty slot.
-        LinearLayout add = Ui.row(this);
-        GradientDrawable ab = Ui.round(this, Ui.BG, 20);
-        ab.setStroke(Ui.dp(this, 1), Color.parseColor(Ui.LINE2), Ui.dp(this, 6), Ui.dp(this, 5));
-        add.setBackground(ab);
-        int ap = Ui.dp(this, 14);
-        add.setPadding(ap, ap, ap, ap);
-        TextView plus = Ui.text(this, "+", 22, Ui.SKY);
-        plus.setTypeface(Ui.weight(500));
-        plus.setBackground(Ui.round(this, Ui.SKY_BOX, 14));
-        add.addView(plus, new LinearLayout.LayoutParams(Ui.dp(this, 44), Ui.dp(this, 44)));
-        add.addView(Ui.space(this, 0), new LinearLayout.LayoutParams(Ui.dp(this, 14), 1));
-        LinearLayout ac = Ui.column(this);
-        ac.addView(Ui.title(this, "Add apps or a group", 16));
-        ac.addView(Ui.left(this, "Social, games, news… or make your own", 13, Ui.MUTED));
-        add.addView(ac, Ui.grow());
-        add.setOnClickListener(v -> picker());
-        Ui.press(add);
-        root.addView(add, card());
+        // One grouped list: a row per limit, then "Add".
+        LinearLayout list = listBox();
+        for (String cat : on) {
+            if (list.getChildCount() > 0) list.addView(rowDivider());
+            list.addView(targetRow(cat));
+        }
+        if (list.getChildCount() > 0) list.addView(rowDivider());
+        list.addView(addRow());
+        root.addView(list, Ui.wide());
+
+        if (!off.isEmpty()) {
+            TextView oh = Ui.overline(this, "Turned off", Ui.MUTED);
+            oh.setPadding(Ui.dp(this, 4), Ui.dp(this, 24), 0, Ui.dp(this, 10));
+            root.addView(oh);
+            LinearLayout ol = listBox();
+            for (String cat : off) {
+                if (ol.getChildCount() > 0) ol.addView(rowDivider());
+                ol.addView(targetRow(cat));
+            }
+            root.addView(ol, Ui.wide());
+        }
         show(root);
         if (!keepScroll) Ui.enter(root);
     }
@@ -194,11 +228,7 @@ public class MainActivity extends Activity {
         Stats.Day t = Stats.day(p, Limits.day(Clock.now(this)));
         int streak = Stats.streak(this, p);
         LinearLayout box = Ui.column(this);
-        GradientDrawable hb = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{Color.parseColor("#13324A"), Color.parseColor(Ui.SURF1)});
-        hb.setCornerRadius(Ui.dp(this, 28));
-        hb.setStroke(Ui.dp(this, 1), Color.parseColor("#1F3B52"));
-        box.setBackground(hb);
+        box.setBackground(Ui.hero(this, 28));
         int hp = Ui.dp(this, 20);
         box.setPadding(hp, hp, hp, hp);
 
@@ -207,33 +237,38 @@ public class MainActivity extends Activity {
         status.setCompoundDrawablePadding(Ui.dp(this, 6));
         status.setCompoundDrawablesRelative(dot(Ui.GREEN), null, null, null);
         top.addView(status);
-        top.addView(new View(this), Ui.grow());
+        top.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
         if (streak > 0) top.addView(Ui.badge(this, streak == 1 ? "1 day streak" : streak + " day streak",
                 Ui.AMBER, Ui.AMBER_BOX));
         box.addView(top, Ui.wide());
         box.addView(Ui.space(this, 18));
 
-        LinearLayout big = Ui.row(this);
-        big.setGravity(Gravity.BOTTOM);
-        TextView n = Ui.number(this, String.valueOf((t.seconds + 59) / 60), 52, Ui.WHITE);
-        big.addView(n);
-        TextView unit = Ui.left(this, " min", 18, Ui.MUTED);
-        unit.setPadding(0, 0, 0, Ui.dp(this, 6));
-        big.addView(unit);
-        box.addView(big);
-        box.addView(Ui.left(this, "on short videos and limited apps today", 13, Ui.MUTED));
+        // Ring: opens left today across every limit that is on.
+        int sumLeft = 0, sumTotal = 0;
+        for (String cat : Targets.all(this)) {
+            if (!limits.config(cat).enabled) continue;
+            int tot = limits.total(cat);
+            sumTotal += tot;
+            sumLeft += limits.hardBlock(cat) != null || limits.inFocus() ? 0 : Math.min(tot, limits.left(cat));
+        }
+        float f = sumTotal == 0 ? 0f : sumLeft / (float) sumTotal;
+        String rc = limits.inFocus() ? Ui.SKY : sumLeft == 0 ? Ui.RED : f <= 1f / 3 ? Ui.AMBER : Ui.GREEN;
+        LinearLayout mid = Ui.row(this);
+        Ring ring = new Ring(this);
+        ring.set(f, rc, String.valueOf(sumLeft), limits.inFocus() ? "focusing" : sumLeft == 1 ? "open left" : "opens left",
+                !keepScroll);
+        mid.addView(ring, new LinearLayout.LayoutParams(Ui.dp(this, 136), Ui.dp(this, 136)));
+        LinearLayout side = Ui.column(this);
+        side.setPadding(Ui.dp(this, 22), 0, 0, 0);
+        side.addView(heroNum(String.valueOf((t.seconds + 59) / 60), "min watched today", Ui.WHITE));
+        side.addView(Ui.space(this, 12));
+        side.addView(heroNum(String.valueOf(t.skips), "times you went back", Ui.GREEN));
+        side.addView(Ui.space(this, 12));
+        side.addView(heroNum(String.valueOf(Stats.weekSkips(this)), "wins this week", Ui.SKY));
+        mid.addView(side, Ui.grow());
+        mid.setGravity(Gravity.CENTER_VERTICAL);
+        box.addView(mid, Ui.wide());
         box.addView(Ui.space(this, 16));
-
-        View line = new View(this);
-        line.setBackgroundColor(Color.parseColor("#1F3B52"));
-        box.addView(line, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1));
-        box.addView(Ui.space(this, 14));
-        LinearLayout nums = Ui.row(this);
-        nums.addView(heroNum(String.valueOf(t.skips), "went back", Ui.GREEN), Ui.grow());
-        nums.addView(heroNum(String.valueOf(t.opens), "opened", Ui.WHITE), Ui.grow());
-        nums.addView(heroNum(String.valueOf(Stats.weekSkips(this)), "wins this week", Ui.SKY), Ui.grow());
-        box.addView(nums, Ui.wide());
-        box.addView(Ui.space(this, 14));
 
         String kind = t.opens == 0 && t.skips == 0 ? "Nothing opened yet today. Nice start."
                 : t.skips > t.opens ? "You chose to go back more than you opened. Well done."
@@ -266,27 +301,35 @@ public class MainActivity extends Activity {
             fc.addView(Ui.space(this, 14));
             int[] mins = {30, 60, 120};
             String[] names = {"30 min", "1 hour", "2 hours"};
-            final int[] pick = {1};
-            Button go = Ui.pill(this, "Focus for 1 hour");
-            fc.addView(Ui.segmented(this, names, 1, i -> {
-                pick[0] = i;
-                go.setText(L.t(this, "Focus for " + names[i]));
-            }), Ui.wide());
-            fc.addView(Ui.space(this, 10));
-            go.setOnClickListener(v -> {
-                int m = mins[pick[0]];
-                new android.app.AlertDialog.Builder(this)
-                        .setTitle(L.t(this, "Focus for " + names[pick[0]] + "?"))
-                        .setMessage(L.t(this, "Shorts, Reels and every app you added stay closed until "
-                                + Limits.hhmm(limits.now() + m * 60_000L) + ". You can't end it early."))
-                        .setPositiveButton(L.t(this, "Start"), (d, w) -> {
+            String[][] parts = {{"30", "min"}, {"1", "hour"}, {"2", "hours"}};
+            LinearLayout btns = Ui.row(this);
+            for (int i = 0; i < 3; i++) {
+                final int k = i;
+                LinearLayout go = Ui.column(this);
+                go.setGravity(Gravity.CENTER);
+                go.setBackground(Ui.round(this, i == 1 ? Ui.SKY : Ui.SKY_BOX, 16));
+                go.setPadding(0, Ui.dp(this, 12), 0, Ui.dp(this, 10));
+                go.addView(Ui.number(this, parts[i][0], 22, i == 1 ? Ui.ON_SKY : Ui.SKY));
+                go.addView(Ui.text(this, parts[i][1], 12, i == 1 ? Ui.ON_SKY : Ui.SKY_SOFT));
+                go.setContentDescription(L.t(this, "Focus for " + names[i]));
+                Ui.press(go);
+                LinearLayout.LayoutParams bl = new LinearLayout.LayoutParams(0,
+                        LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+                if (i > 0) bl.leftMargin = Ui.dp(this, 8);
+                btns.addView(go, bl);
+                go.setOnClickListener(v -> {
+                int m = mins[k];
+                Ui.confirm(this, L.t(this, "Focus for " + names[k] + "?"),
+                        L.t(this, "Shorts, Reels and every app you added stay closed until "
+                                + Limits.hhmm(limits.now() + m * 60_000L) + ". You can't end it early."),
+                        L.t(this, "Start focus"), false, () -> {
                             limits.startFocus(m);
                             Ui.buzz(v, android.view.HapticFeedbackConstants.CONFIRM);
                             home();
-                        })
-                        .setNegativeButton(L.t(this, "Cancel"), null).show();
-            });
-            fc.addView(go, Ui.wide());
+                        });
+                });
+            }
+            fc.addView(btns, Ui.wide());
         }
         root.addView(fc, Ui.wide());
     }
@@ -318,33 +361,281 @@ public class MainActivity extends Activity {
         show(root);
     }
 
+    /** Glass look: background palette swatches, blur and see-through sliders, reset. */
+    private void lookControls(LinearLayout look) {
+        look.addView(Ui.space(this, 18));
+        look.addView(Ui.left(this, "Background", 13, Ui.DIM));
+        look.addView(Ui.space(this, 8));
+        LinearLayout sw = new LinearLayout(this);
+        FrameLayout[] holders = new FrameLayout[Ui.PALETTES.length];
+        TextView[] names = new TextView[Ui.PALETTES.length];
+        for (int i = 0; i < Ui.PALETTES.length; i++) {
+            final int idx = i;
+            LinearLayout cell = new LinearLayout(this);
+            cell.setOrientation(LinearLayout.VERTICAL);
+            cell.setGravity(Gravity.CENTER_HORIZONTAL);
+            View tile = new View(this);
+            Ui.Backdrop bd = new Ui.Backdrop(i);
+            tile.setBackground(bd);
+            tile.setClipToOutline(true);
+            final int rad = Ui.dp(this, 14);
+            tile.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                @Override
+                public void getOutline(View v, android.graphics.Outline o) {
+                    o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), rad);
+                }
+            });
+            FrameLayout holder = new FrameLayout(this);
+            int ring = Ui.dp(this, 3);
+            holder.setPadding(ring, ring, ring, ring);
+            android.graphics.drawable.GradientDrawable st = new android.graphics.drawable.GradientDrawable();
+            st.setCornerRadius(rad + ring);
+            st.setStroke(Ui.dp(this, 2), Color.parseColor(Ui.SKY));
+            holder.setBackground(st);
+            st.setAlpha(i == Ui.palette ? 255 : 0);
+            holder.addView(tile, new FrameLayout.LayoutParams(-1, Ui.dp(this, 64)));
+            cell.addView(holder, Ui.wide());
+            cell.addView(Ui.space(this, 4));
+            TextView name = Ui.text(this, Ui.PALETTES[i], 12, i == Ui.palette ? Ui.SKY_SOFT : Ui.MUTED);
+            cell.addView(name);
+            holders[i] = holder;
+            names[i] = name;
+            cell.setContentDescription(Ui.PALETTES[i] + " background");
+            cell.setOnClickListener(v -> {
+                if (idx == Ui.palette) return;
+                Ui.buzz(v, 0);
+                Ui.setLook(this, "palette", idx);
+                Ui.backdrop(this);
+                // Update in place: rebuilding the page made it flicker.
+                for (int k = 0; k < holders.length; k++) {
+                    holders[k].getBackground().setAlpha(k == idx ? 255 : 0);
+                    names[k].setTextColor(Color.parseColor(k == idx ? Ui.SKY_SOFT : Ui.MUTED));
+                }
+                Ui.refrostAll(getWindow().getDecorView());
+            });
+            Ui.press(cell);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1f);
+            if (i > 0) lp.leftMargin = Ui.dp(this, 8);
+            sw.addView(cell, lp);
+        }
+        look.addView(sw, Ui.wide());
+
+        look.addView(slider("Blur", "blur", Ui.blur, "None", "Strong", true));
+        look.addView(slider("Card see-through", "clear", Ui.clear, "Solid", "Clear", false));
+
+        look.addView(Ui.space(this, 14));
+        Button reset = Ui.ghost(this, "Reset look");
+        reset.setOnClickListener(v -> {
+            Ui.resetLook(this);
+            Ui.backdrop(this);
+            keepScroll = true;
+            settingsTab();
+            keepScroll = false;
+        });
+        look.addView(reset, Ui.wide());
+    }
+
+    /** Labelled 0..100 slider for a look setting. live = redraw while dragging, else rebuild on release. */
+    private View slider(String label, String key, int value, String low, String high, boolean live) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(0, Ui.dp(this, 18), 0, 0);
+        LinearLayout head = new LinearLayout(this);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.addView(Ui.left(this, label, 15, Ui.WHITE), new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView val = Ui.text(this, value + "%", 14, Ui.SKY_SOFT);
+        head.addView(val);
+        box.addView(head, Ui.wide());
+        android.widget.SeekBar sb = new android.widget.SeekBar(this);
+        sb.setMax(100);
+        sb.setProgress(value);
+        android.content.res.ColorStateList sky = android.content.res.ColorStateList.valueOf(Color.parseColor(Ui.SKY));
+        sb.setProgressTintList(sky);
+        sb.setThumbTintList(sky);
+        sb.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor(Ui.SURF3)));
+        sb.setPadding(Ui.dp(this, 10), Ui.dp(this, 10), Ui.dp(this, 10), Ui.dp(this, 10));
+        sb.setContentDescription(label);
+        sb.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(android.widget.SeekBar s, int p, boolean user) {
+                val.setText(p + "%");
+                if (live && user) {
+                    Ui.blur = p;
+                    Ui.refrostAll(getWindow().getDecorView());
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(android.widget.SeekBar s) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(android.widget.SeekBar s) {
+                Ui.setLook(MainActivity.this, key, s.getProgress());
+                if (live) return;
+                keepScroll = true;
+                settingsTab();
+                keepScroll = false;
+            }
+        });
+        box.addView(sb, Ui.wide());
+        LinearLayout ends = new LinearLayout(this);
+        ends.setPadding(Ui.dp(this, 4), 0, Ui.dp(this, 4), 0);
+        ends.addView(Ui.left(this, low, 12, Ui.DIM), new LinearLayout.LayoutParams(0, -2, 1f));
+        ends.addView(Ui.text(this, high, 12, Ui.DIM));
+        box.addView(ends, Ui.wide());
+        return box;
+    }
+
     private void settingsTab() {
         screen = "settings";
         LinearLayout root = page("Settings");
         Extras.addHomeButtons(this, root);
 
+        root.addView(section("Look"));
+        LinearLayout look = group(root);
+        look.setPadding(Ui.dp(this, 14), Ui.dp(this, 14), Ui.dp(this, 14), Ui.dp(this, 14));
+        look.addView(Ui.left(this, "Glass: see-through frosted cards over soft colour. Classic: solid dark.", 14,
+                Ui.MUTED));
+        look.addView(Ui.space(this, 10));
+        look.addView(Ui.segmented(this, new String[]{"Glass", "Classic"}, Ui.glass ? 0 : 1, i -> {
+            String name = i == 0 ? "glass" : "classic";
+            if (name.equals(Ui.themeName(this))) return;
+            // Every colour changes, so the page must be rebuilt; let the thumb finish sliding first.
+            getWindow().getDecorView().postDelayed(() -> {
+                if (!"settings".equals(screen) || name.equals(Ui.themeName(this))) return;
+                Ui.setTheme(this, name);
+                Ui.backdrop(this);
+                keepScroll = true;
+                settingsTab();
+                keepScroll = false;
+            }, 260);
+        }), Ui.wide());
+        if (Ui.glass) lookControls(look);
+
+        root.addView(section("Pause screen"));
+        LinearLayout ps = group(root);
+        ps.setPadding(Ui.dp(this, 14), Ui.dp(this, 14), Ui.dp(this, 14), Ui.dp(this, 6));
+        ps.addView(Ui.left(this, "What the pause asks you to do while you wait.", 14, Ui.MUTED));
+        ps.addView(Ui.space(this, 10));
+        // Changes apply in place (no page rebuild: that flickered and cut the segmented animation).
+        LinearLayout paceBox = new LinearLayout(this);
+        paceBox.setOrientation(LinearLayout.VERTICAL);
+        ps.addView(Ui.segmented(this, Guide.STYLES, Guide.style(this), i -> {
+            Guide.set(this, "guide", i);
+            boolean show = i != 1;
+            if (show == (paceBox.getVisibility() == View.VISIBLE)) return;
+            paceBox.animate().cancel();
+            if (show) {
+                paceBox.setAlpha(0f);
+                paceBox.setVisibility(View.VISIBLE);
+                paceBox.animate().alpha(1f).setDuration(200).start();
+            } else {
+                paceBox.animate().alpha(0f).setDuration(150)
+                        .withEndAction(() -> paceBox.setVisibility(View.GONE)).start();
+            }
+        }), Ui.wide());
+        paceBox.addView(Ui.space(this, 14));
+        paceBox.addView(Ui.left(this, "Breathing pace", 13, Ui.MUTED));
+        paceBox.addView(Ui.space(this, 8));
+        TextView paceInfo = Ui.left(this, Guide.PACE_INFO[Guide.pace(this)], 12, Ui.DIM);
+        paceBox.addView(Ui.segmented(this, Guide.PACES, Guide.pace(this), i -> {
+            Guide.set(this, "pace", i);
+            paceInfo.setText(Guide.PACE_INFO[i]);
+        }), Ui.wide());
+        paceBox.addView(Ui.space(this, 6));
+        paceBox.addView(paceInfo);
+        paceBox.setVisibility(Guide.style(this) != 1 ? View.VISIBLE : View.GONE);
+        ps.addView(paceBox, Ui.wide());
+        ps.addView(Ui.space(this, 6));
+        ps.addView(toggle("Show a question", Guide.question(this), on -> Guide.set(this, "guide_q", on)));
+        ps.addView(divider());
+        ps.addView(toggle("Vibrate at each step", Guide.haptic(this), on -> Guide.set(this, "guide_buzz", on)));
+
+        root.addView(section("Wait time"));
+        LinearLayout wt = group(root);
+        boolean firstWt = true;
+        for (String cat : Targets.all(this)) {
+            if (!limits.config(cat).enabled) continue;
+            if (!firstWt) wt.addView(divider());
+            firstWt = false;
+            Config cf = limits.config(cat);
+            String v = cf.pauseS + " s" + (cf.pauseStepS > 0 ? " +" + cf.pauseStepS : "");
+            wt.addView(navRow(Limits.label(this, cat), null, v, () -> edit(cat)));
+        }
+        if (firstWt) wt.addView(Ui.left(this, "Nothing is limited yet.", 14, Ui.MUTED));
+
         root.addView(section("Do this instead"));
         LinearLayout g = group(root);
         g.setPadding(Ui.dp(this, 14), Ui.dp(this, 14), Ui.dp(this, 14), Ui.dp(this, 14));
-        g.addView(Ui.left(this, "Your own ideas, one per line. The pause screen shows one at random.",
-                14, Ui.MUTED));
+        g.addView(Ui.left(this, "The pause screen shows one of these at random.", 14, Ui.MUTED));
         g.addView(Ui.space(this, 10));
-        EditText swaps = input(Config.swapsText(this), "Read 5 pages\nWalk 10 minutes\nCall a friend");
-        swaps.setBackground(Ui.round(this, Ui.BG, 10));
-        swaps.setSingleLine(false);
-        swaps.setMinLines(3);
-        swaps.setGravity(Gravity.TOP | Gravity.START);
-        g.addView(swaps, Ui.wide());
-        g.addView(Ui.space(this, 10));
-        Button saveSwaps = Ui.small(this, "Save ideas");
+        java.util.List<String> ideas = Config.swaps(this);
+        LinearLayout list = Ui.column(this);
+        g.addView(list, Ui.wide());
+        // Edited in place (no page rebuild) so the field keeps focus and the keyboard stays up.
+        java.util.function.Consumer<String> addRow = new java.util.function.Consumer<String>() {
+            @Override
+            public void accept(String idea) {
+                LinearLayout r = Ui.row(MainActivity.this);
+                r.setGravity(Gravity.CENTER_VERTICAL);
+                r.setBackground(Ui.round(MainActivity.this, Ui.SURF2, 14));
+                r.setPadding(Ui.dp(MainActivity.this, 14), Ui.dp(MainActivity.this, 4),
+                        Ui.dp(MainActivity.this, 4), Ui.dp(MainActivity.this, 4));
+                r.addView(Ui.left(MainActivity.this, idea, 15, Ui.WHITE), Ui.grow());
+                TextView x = Ui.text(MainActivity.this, "×", 22, Ui.MUTED);
+                x.setPadding(Ui.dp(MainActivity.this, 12), Ui.dp(MainActivity.this, 6),
+                        Ui.dp(MainActivity.this, 12), Ui.dp(MainActivity.this, 6));
+                x.setContentDescription(L.t(MainActivity.this, "Remove") + " " + idea);
+                Ui.press(x);
+                x.setOnClickListener(v -> {
+                    int k = list.indexOfChild(r);
+                    java.util.List<String> now = Config.swaps(MainActivity.this);
+                    if (k >= 0 && k < now.size()) now.remove(k);
+                    Config.saveSwaps(MainActivity.this, String.join("\n", now));
+                    Ui.buzz(v, android.view.HapticFeedbackConstants.CLOCK_TICK);
+                    list.removeView(r);
+                });
+                r.addView(x);
+                LinearLayout.LayoutParams rl = Ui.wide();
+                rl.bottomMargin = Ui.dp(MainActivity.this, 8);
+                r.setAlpha(0f);
+                list.addView(r, rl);
+                r.animate().alpha(1f).setDuration(180).setInterpolator(Ui.EASE).start();
+            }
+        };
+        for (String idea : ideas) addRow.accept(idea);
+        LinearLayout add = Ui.row(this);
+        add.setGravity(Gravity.CENTER_VERTICAL);
+        EditText swaps = input("", ideas.isEmpty() ? "e.g. Read 5 pages" : "Add an idea");
+        swaps.setBackground(Ui.round(this, Ui.INSET, 14));
+        swaps.setSingleLine(true);
+        swaps.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
+        add.addView(swaps, Ui.grow());
+        Button saveSwaps = Ui.small(this, "Add");
         saveSwaps.setBackground(Ui.round(this, Ui.SKY, 14));
-        saveSwaps.setTextColor(Color.parseColor(Ui.BG));
-        saveSwaps.setOnClickListener(v -> {
-            Config.saveSwaps(this, swaps.getText().toString());
-            Toast.makeText(this, L.t(this, "Saved"), Toast.LENGTH_SHORT).show();
+        saveSwaps.setTextColor(Color.parseColor(Ui.ON_SKY));
+        Runnable doAdd = () -> {
+            String t = swaps.getText().toString().replace('\n', ' ').trim();
+            if (t.isEmpty()) return;
+            java.util.List<String> now = Config.swaps(this);
+            now.add(t);
+            Config.saveSwaps(this, String.join("\n", now));
+            addRow.accept(t);
+            swaps.setText("");
+            swaps.setHint(L.t(this, "Add an idea"));
+            Ui.buzz(swaps, android.view.HapticFeedbackConstants.CLOCK_TICK);
+        };
+        saveSwaps.setOnClickListener(v -> doAdd.run());
+        swaps.setOnEditorActionListener((v, id, e) -> {
+            doAdd.run();
+            return true;
         });
-        g.addView(saveSwaps, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT));
+        LinearLayout.LayoutParams al = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        al.leftMargin = Ui.dp(this, 8);
+        add.addView(saveSwaps, al);
+        g.addView(add, Ui.wide());
 
         root.addView(Ui.space(this, 28));
         String ver = "";
@@ -380,30 +671,63 @@ public class MainActivity extends Activity {
     /** Thin line between rows of a {@link #group}. */
     View divider() {
         View d = new View(this);
-        d.setBackgroundColor(Color.parseColor(Ui.LINE));
+        d.setBackgroundColor(Color.parseColor(Ui.SEP));
         d.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1));
         return d;
     }
 
-    private View targetCard(String cat) {
-        Config c = limits.config(cat);
-        LinearLayout box = Ui.card(this);
-        box.setPadding(Ui.dp(this, 14), Ui.dp(this, 14), Ui.dp(this, 16), Ui.dp(this, 14));
+    private LinearLayout listBox() {
+        LinearLayout l = Ui.column(this);
+        l.setBackground(Ui.outlined(this, Ui.CARD, 14));
+        l.setClipToOutline(true);
+        return l;
+    }
 
+    /** Divider inset past the icon, like a settings list. */
+    private View rowDivider() {
+        View d = new View(this);
+        d.setBackgroundColor(Color.parseColor(Ui.SEP));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1);
+        lp.leftMargin = Ui.dp(this, 74);
+        d.setLayoutParams(lp);
+        return d;
+    }
+
+    private View addRow() {
         LinearLayout row = Ui.row(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(Ui.dp(this, 16), Ui.dp(this, 14), Ui.dp(this, 16), Ui.dp(this, 14));
+        TextView plus = Ui.text(this, "+", 22, Ui.SKY);
+        plus.setTypeface(Ui.weight(500));
+        plus.setBackground(Ui.round(this, Ui.SKY_BOX, 13));
+        row.addView(plus, new LinearLayout.LayoutParams(Ui.dp(this, 42), Ui.dp(this, 42)));
+        row.addView(Ui.space(this, 0), new LinearLayout.LayoutParams(Ui.dp(this, 16), 1));
+        LinearLayout col = Ui.column(this);
+        TextView t = Ui.left(this, "Add an app or group", 16, Ui.SKY);
+        t.setTypeface(Ui.weight(600));
+        col.addView(t);
+        col.addView(Ui.left(this, "Social, games, news… or your own", 13, Ui.DIM));
+        row.addView(col, Ui.grow());
+        row.setOnClickListener(v -> picker());
+        Ui.press(row);
+        return row;
+    }
+
+    private View targetRow(String cat) {
+        Config c = limits.config(cat);
+        LinearLayout row = Ui.row(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(Ui.dp(this, 16), Ui.dp(this, 14), Ui.dp(this, 14), Ui.dp(this, 14));
+
         View ic = iconView(cat);
-        FrameLayout sq = new FrameLayout(this);
-        sq.setBackground(Ui.round(this, Ui.SURF2, 14));
-        int ip = Ui.dp(this, 7);
-        sq.setPadding(ip, ip, ip, ip);
-        sq.addView(ic, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT));
-        if (!c.enabled) sq.setAlpha(0.45f);
-        row.addView(sq, new LinearLayout.LayoutParams(Ui.dp(this, 46), Ui.dp(this, 46)));
-        row.addView(Ui.space(this, 0), new LinearLayout.LayoutParams(Ui.dp(this, 14), 1));
+        if (!c.enabled) ic.setAlpha(0.4f);
+        row.addView(ic, new LinearLayout.LayoutParams(Ui.dp(this, 42), Ui.dp(this, 42)));
+        row.addView(Ui.space(this, 0), new LinearLayout.LayoutParams(Ui.dp(this, 16), 1));
 
         LinearLayout col = Ui.column(this);
         TextView name = Ui.title(this, Limits.label(this, cat), 16);
+        name.setSingleLine(true);
+        name.setEllipsize(android.text.TextUtils.TruncateAt.END);
         if (!c.enabled) name.setTextColor(Color.parseColor(Ui.MUTED));
         col.addView(name);
         String tag;
@@ -411,45 +735,42 @@ public class MainActivity extends Activity {
             int n = Targets.groupApps(this, cat).size();
             tag = n == 1 ? "1 app" : n + " apps";
         } else tag = "facebook".equals(cat) ? "Website" : "whole".equals(c.mode) || Targets.wholeOnly(cat) ? "Whole app" : "Shorts / Reels";
-        int used = limits.used(cat), total = limits.total(cat);
-        boolean closed = c.enabled && (limits.hardBlock(cat) != null || limits.left(cat) == 0);
-        String sub = !c.enabled ? tag + " · paused"
+        int total = limits.total(cat), left = limits.left(cat);
+        boolean closed = c.enabled && (limits.hardBlock(cat) != null || left == 0);
+        boolean low = c.enabled && !closed && !limits.isUnlocked(cat) && (left <= 2 || left * 3 <= total);
+        String state = closed ? Ui.RED : low ? Ui.AMBER : Ui.GREEN;
+        String sub = !c.enabled ? tag + " · off"
                 : limits.hardBlock(cat) != null ? "Closed: " + limits.hardBlock(cat)
-                : closed ? "Back at midnight"
-                : tag + " · " + c.openMin + " min each";
-        col.addView(Ui.left(this, sub, 13, closed ? Ui.RED : Ui.MUTED));
-        if (c.enabled && !closed && total > 0) {
-            col.addView(Ui.space(this, 8));
-            col.addView(segBar(used, total), new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(this, 4)));
-        }
+                : closed ? "Used up · back at midnight"
+                : limits.isUnlocked(cat) ? "Open now · " + tag
+                : tag + " · " + c.openMin + " min";
+        TextView st = Ui.left(this, sub, 13, closed ? Ui.RED : low ? Ui.AMBER : Ui.DIM);
+        st.setSingleLine(true);
+        st.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        col.addView(st);
         row.addView(col, Ui.grow());
         row.addView(Ui.space(this, 0), new LinearLayout.LayoutParams(Ui.dp(this, 12), 1));
 
-        // Right side: edit action, opens left as a number, or a status badge.
+        // Right side: edit action, a small ring of opens left, or a status badge.
         if (homeEditing) row.addView(editAction(cat, c.enabled));
         else if (!c.enabled) row.addView(Ui.badge(this, "Off", Ui.DIM, Ui.SURF2));
-        else if (limits.isUnlocked(cat)) row.addView(Ui.badge(this, "Open now", Ui.GREEN, Ui.GREEN_BOX));
-        else if (closed) row.addView(Ui.badge(this, "Closed", Ui.RED, Ui.RED_BOX));
+        else if (limits.isUnlocked(cat)) row.addView(Ui.badge(this, "Open", Ui.GREEN, Ui.GREEN_BOX));
+        else if (total <= 0) row.addView(Ui.badge(this, "Blocked", Ui.RED, Ui.RED_BOX));
         else {
-            LinearLayout r = Ui.column(this);
-            r.setGravity(Gravity.END);
-            TextView n = Ui.number(this, String.valueOf(limits.left(cat)), 22, Ui.SKY);
-            r.addView(n, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT));
-            r.addView(Ui.text(this, "left", 11, Ui.DIM), new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-            row.addView(r);
+            Ring r = new Ring(this, 4);
+            r.numColor(closed ? Ui.RED : Ui.WHITE);
+            r.set(left / (float) total, state, String.valueOf(left), "", !keepScroll);
+            r.setContentDescription(left + " of " + total + " opens left");
+            row.addView(r, new LinearLayout.LayoutParams(Ui.dp(this, 44), Ui.dp(this, 44)));
         }
-        box.addView(row);
-        box.setOnClickListener(v -> edit(cat));
-        box.setOnLongClickListener(v -> {
+        row.setOnClickListener(v -> edit(cat));
+        row.setOnLongClickListener(v -> {
             Ui.buzz(v, android.view.HapticFeedbackConstants.LONG_PRESS);
             cardMenu(cat);
             return true;
         });
-        Ui.press(box);
-        return box;
+        Ui.press(row);
+        return row;
     }
 
     /** Redraw Home in place (same scroll, no animation). */
@@ -504,14 +825,14 @@ public class MainActivity extends Activity {
             if (on) askOff(cat);
             else setOn(cat, true);
         });
+        int red = 0;
         if (!builtin(cat) || !on) {
+            red = 1 << items.size();
             items.add(L.t(this, Targets.isGroup(cat) ? "Delete group" : builtin(cat) ? "Remove" : "Remove app"));
             acts.add(() -> askRemove(cat));
         }
-        new android.app.AlertDialog.Builder(this)
-                .setTitle(Limits.label(this, cat))
-                .setItems(items.toArray(new String[0]), (d, w) -> acts.get(w).run())
-                .show();
+        Ui.sheet(this, Limits.label(this, cat), null, items.toArray(new String[0]), red,
+                w -> acts.get(w).run());
     }
 
     private String strictNote() {
@@ -519,12 +840,10 @@ public class MainActivity extends Activity {
     }
 
     private void askOff(String cat) {
-        new android.app.AlertDialog.Builder(this)
-                .setTitle(L.t(this, "Turn off " + Limits.label(this, cat) + "?"))
-                .setMessage(L.t(this, "No pause and no limit for it. It moves to \"Turned off\", "
-                        + "where you can turn it back on." + strictNote()))
-                .setPositiveButton(L.t(this, "Turn off"), (d, w) -> setOn(cat, false))
-                .setNegativeButton(L.t(this, "Cancel"), null).show();
+        Ui.confirm(this, L.t(this, "Turn off " + Limits.label(this, cat) + "?"),
+                L.t(this, "No pause and no limit for it. It moves to \"Turned off\", "
+                        + "where you can turn it back on." + strictNote()),
+                L.t(this, "Turn off"), true, () -> setOn(cat, false));
     }
 
     private void setOn(String cat, boolean on) {
@@ -536,46 +855,25 @@ public class MainActivity extends Activity {
 
     private void askRemove(String cat) {
         if (builtin(cat)) {
-            new android.app.AlertDialog.Builder(this)
-                    .setTitle(L.t(this, "Remove " + Limits.label(this, cat) + "?"))
-                    .setMessage(L.t(this, "It's already off. This takes it off Home. "
-                            + "You can add it again with + Add."))
-                    .setPositiveButton(L.t(this, "Remove"), (d, w) -> {
+            Ui.confirm(this, L.t(this, "Remove " + Limits.label(this, cat) + "?"),
+                    L.t(this, "It's already off. This takes it off Home. You can add it again with + Add."),
+                    L.t(this, "Remove"), true, () -> {
                         // Only reachable while turned off, so nothing gets looser: no strict delay.
                         if (!limits.config(cat).enabled) Targets.setHidden(this, cat, true);
                         refreshHome();
-                    })
-                    .setNegativeButton(L.t(this, "Cancel"), null).show();
+                    });
             return;
         }
         boolean group = Targets.isGroup(cat);
-        new android.app.AlertDialog.Builder(this)
-                .setTitle(L.t(this, (group ? "Delete " : "Remove ") + Limits.label(this, cat) + "?"))
-                .setMessage(L.t(this, (group ? "Its apps won't be limited any more." : "It won't be limited any more.")
-                        + " You can add it again with + Add." + strictNote()))
-                .setPositiveButton(L.t(this, group ? "Delete" : "Remove"), (d, w) -> {
+        Ui.confirm(this, L.t(this, (group ? "Delete " : "Remove ") + Limits.label(this, cat) + "?"),
+                L.t(this, (group ? "Its apps won't be limited any more." : "It won't be limited any more.")
+                        + " You can add it again with + Add." + strictNote()),
+                L.t(this, group ? "Delete" : "Remove"), true, () -> {
                     String msg = group ? Strict.removeGroup(this, cat)
                             : Strict.removeApp(this, cat.substring(Limits.APP_PREFIX.length()));
                     Toast.makeText(this, L.t(this, msg), Toast.LENGTH_LONG).show();
                     refreshHome();
-                })
-                .setNegativeButton(L.t(this, "Cancel"), null).show();
-    }
-
-    /** Opens bar: one segment per open (up to 12), else a continuous bar. */
-    private View segBar(int used, int total) {
-        String color = used >= total ? Ui.RED : Ui.SKY;
-        if (total > 12) return bar(Math.min(1f, used / (float) total), color);
-        LinearLayout r = Ui.row(this);
-        for (int i = 0; i < total; i++) {
-            View s = new View(this);
-            s.setBackground(Ui.round(this, i < used ? color : Ui.SURF3, 2));
-            LinearLayout.LayoutParams l = new LinearLayout.LayoutParams(0,
-                    LinearLayout.LayoutParams.MATCH_PARENT, 1f);
-            if (i > 0) l.leftMargin = Ui.dp(this, 3);
-            r.addView(s, l);
-        }
-        return r;
+                });
     }
 
     /** Horizontal progress bar filled to {@code f} (0..1). */
@@ -604,6 +902,12 @@ public class MainActivity extends Activity {
                 return iv;
             } catch (Exception ignored) {
             }
+        }
+        Drawable brand = Brand.of(cat);
+        if (brand != null) {
+            ImageView iv = new ImageView(this);
+            iv.setImageDrawable(brand);
+            return iv;
         }
         String name = Limits.label(this, cat);
         TextView t = Ui.text(this, name.isEmpty() ? "?" : name.substring(0, 1), 17, Ui.SKY);
@@ -647,12 +951,7 @@ public class MainActivity extends Activity {
 
         // Live preview: the three numbers that matter, big, like a ticket.
         LinearLayout prev = Ui.column(this);
-        android.graphics.drawable.GradientDrawable pg = new android.graphics.drawable.GradientDrawable(
-                android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
-                new int[]{Color.parseColor("#13324A"), Color.parseColor(Ui.SURF1)});
-        pg.setCornerRadius(Ui.dp(this, 20));
-        pg.setStroke(Ui.dp(this, 1), Color.parseColor("#1F3B52"));
-        prev.setBackground(pg);
+        prev.setBackground(Ui.hero(this, 20));
         int pp = Ui.dp(this, 16);
         prev.setPadding(pp, pp, pp, pp);
         TextView presetName = Ui.left(this, "", 12, Ui.SKY);
@@ -846,9 +1145,9 @@ public class MainActivity extends Activity {
     /** Rounded card box added to root; settings rows go inside. */
     LinearLayout group(LinearLayout root) {
         LinearLayout g = Ui.column(this);
-        g.setBackground(Ui.outlined(this, Ui.CARD, 20));
+        g.setBackground(Ui.outlined(this, Ui.CARD, 14));
         int p = Ui.dp(this, 16);
-        g.setPadding(p, Ui.dp(this, 4), p, Ui.dp(this, 4));
+        g.setPadding(p, Ui.dp(this, 2), p, Ui.dp(this, 2));
         root.addView(g, Ui.wide());
         return g;
     }
@@ -1317,84 +1616,163 @@ public class MainActivity extends Activity {
         void set(boolean b);
     }
 
+    /** Title of the page being built; shown small in the top bar once the large title scrolls away. */
+    private String pageTitle;
+
     LinearLayout page(String title) {
+        pageTitle = title;
         LinearLayout root = Ui.column(this);
         int p = Ui.dp(this, 20);
-        root.setPadding(p, Ui.dp(this, 12), p, Ui.dp(this, 28));
-        root.addView(Ui.title(this, title, 28));
-        root.addView(Ui.space(this, 16));
+        root.setPadding(p, Ui.dp(this, 52), p, Ui.dp(this, 28));
+        root.addView(Ui.largeTitle(this, title));
+        root.addView(Ui.space(this, 14));
         return root;
     }
+
+    /** iOS-style bar: small centred title on frosted ground with a hairline; fades in on scroll. */
+    private View topBar(ScrollView sv) {
+        FrameLayout bar = new FrameLayout(this);
+        bar.setBackground(Ui.frost(this, Ui.round(this, Ui.NAV, 0), 0));
+        TextView t = Ui.text(this, pageTitle == null ? "" : pageTitle, 17, Ui.WHITE);
+        t.setTypeface(Ui.weight(600));
+        t.setSingleLine(true);
+        t.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        t.setPadding(Ui.dp(this, 48), 0, Ui.dp(this, 48), 0);
+        bar.addView(t, new FrameLayout.LayoutParams(-1, -1, Gravity.CENTER));
+        View line = new View(this);
+        line.setBackgroundColor(Color.parseColor(Ui.SEP));
+        bar.addView(line, new FrameLayout.LayoutParams(-1, 1, Gravity.BOTTOM));
+        int start = Ui.dp(this, 30), span = Ui.dp(this, 26);
+        Runnable fade = () -> {
+            float a = Math.max(0f, Math.min(1f, (sv.getScrollY() - start) / (float) span));
+            bar.setAlpha(a);
+            bar.setVisibility(a <= 0f ? View.INVISIBLE : View.VISIBLE);
+            t.setTranslationY((1f - a) * Ui.dp(this, 6));
+        };
+        sv.getViewTreeObserver().addOnScrollChangedListener(fade::run);
+        sv.post(fade);
+        bar.setAlpha(0f);
+        bar.setVisibility(View.INVISIBLE);
+        return bar;
+    }
+
+    private static int lastTab = -1;
 
     void show(LinearLayout root) {
         ScrollView sv = new ScrollView(this);
         sv.setFillViewport(true);
-        sv.setBackgroundColor(Color.parseColor(Ui.BG));
+        sv.setBackgroundColor(Color.TRANSPARENT);
         sv.addView(root);
         if (keepScroll && curScroll != null) {
             int y = curScroll.getScrollY();
-            root.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+            // Scroll before the first frame is drawn: a posted scroll left one frame at the top (flicker).
+            sv.getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
                 @Override
-                public void onLayoutChange(View v, int l, int t, int r, int b, int ol, int ot, int or, int ob) {
-                    v.removeOnLayoutChangeListener(this);
-                    sv.post(() -> sv.scrollTo(0, y));
+                public boolean onPreDraw() {
+                    sv.getViewTreeObserver().removeOnPreDrawListener(this);
+                    sv.scrollTo(0, y);
+                    return true;
                 }
             });
         }
         curScroll = sv;
+        if (!keepScroll) {
+            sv.setAlpha(0f);
+            sv.animate().alpha(1f).setDuration(180).setInterpolator(Ui.EASE).start();
+        }
+        FrameLayout stack = new FrameLayout(this);
+        stack.addView(sv, new FrameLayout.LayoutParams(-1, -1));
+        stack.addView(topBar(sv), new FrameLayout.LayoutParams(-1, Ui.dp(this, 44), Gravity.TOP));
         if (!isTab(screen)) {
-            Ui.fitInsets(sv);
-            setContentView(sv);
+            Ui.fitInsets(stack);
+            setContentView(stack);
             return;
         }
         LinearLayout frame = Ui.column(this);
-        frame.setBackgroundColor(Color.parseColor(Ui.BG));
-        frame.addView(sv, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
-        View line = new View(this);
-        line.setBackgroundColor(Color.parseColor(Ui.LINE));
-        frame.addView(line, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(this, 1)));
-        LinearLayout bar = Ui.row(this);
-        bar.setBackgroundColor(Color.parseColor(Ui.SURF1));
+        frame.setBackgroundColor(Color.TRANSPARENT);
+        frame.addView(stack, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+        // Floating frosted dock: equal tabs (icon over label), a soft sky pill slides to the open tab.
+        LinearLayout dock = Ui.row(this);
+        dock.setPadding(Ui.dp(this, 24), Ui.dp(this, 6), Ui.dp(this, 24), Ui.dp(this, 12));
+        FrameLayout bar = new FrameLayout(this);
+        bar.setBackground(Ui.outlined(this, Ui.NAV, 32));
+        if (!Ui.glass) bar.setElevation(Ui.dp(this, 8)); // shadows show through translucent fills
+        if (Ui.glass) {
+            // Specular rim: a bright hairline along the top edge, like light catching glass.
+            View rim = new View(this);
+            android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable(
+                    android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
+                    new int[]{0x00FFFFFF, 0x66FFFFFF, 0x00FFFFFF});
+            rim.setBackground(g);
+            FrameLayout.LayoutParams rl = new FrameLayout.LayoutParams(-1, Ui.dp(this, 1), Gravity.TOP);
+            rl.leftMargin = rl.rightMargin = Ui.dp(this, 26);
+            rl.topMargin = -Ui.dp(this, 5) + 1;
+            bar.addView(rim, rl);
+        }
+        int bp = Ui.dp(this, 5);
+        bar.setPadding(bp, bp, bp, bp);
         String[][] tabs = {{"home", "Home"}, {"stats", "Stats"}, {"settings", "Settings"}};
         int[] icons = {R.drawable.ic_home, R.drawable.ic_chart, R.drawable.ic_gear};
-        int ti = 0;
-        for (String[] t : tabs) {
-            boolean on = t[0].equals(screen);
-            String col = on ? Ui.SKY : Ui.DIM;
+        int sel = 0;
+        for (int i = 0; i < tabs.length; i++) if (tabs[i][0].equals(screen)) sel = i;
+        View pill = new View(this);
+        pill.setBackground(Ui.round(this, Ui.glass ? "#26FFFFFF" : "#1A4A66", 26));
+        bar.addView(pill, new FrameLayout.LayoutParams(0, Ui.dp(this, 52)));
+        LinearLayout row = Ui.row(this);
+        for (int i = 0; i < tabs.length; i++) {
+            String[] t = tabs[i];
+            boolean on = i == sel;
             LinearLayout b = Ui.column(this);
             b.setGravity(Gravity.CENTER);
-            b.setPadding(0, Ui.dp(this, 8), 0, Ui.dp(this, 10));
-            ImageView ic = icon(icons[ti++], on ? Ui.SKY : Ui.DIM, 22);
-            // Selected tab: icon in a sky pill, like Material 3.
-            FrameLayout pill = new FrameLayout(this);
-            if (on) pill.setBackground(Ui.round(this, Ui.SKY_BOX, 16));
-            pill.setPadding(Ui.dp(this, 18), Ui.dp(this, 4), Ui.dp(this, 18), Ui.dp(this, 4));
-            pill.addView(ic, new FrameLayout.LayoutParams(Ui.dp(this, 22), Ui.dp(this, 22)));
-            // Vertical LinearLayout defaults children to match_parent width; keep the pill snug.
-            b.addView(pill, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT));
-            b.addView(Ui.space(this, 4));
-            TextView label = Ui.text(this, t[1], 12, col);
-            label.setTypeface(Ui.weight(on ? 600 : 400));
+            b.setContentDescription(L.t(this, t[1]));
+            b.addView(icon(icons[i], on ? Ui.SKY : Ui.MUTED, 22),
+                    new LinearLayout.LayoutParams(Ui.dp(this, 22), Ui.dp(this, 22)));
+            TextView label = Ui.text(this, t[1], 11, on ? Ui.SKY : Ui.MUTED);
+            label.setTypeface(Ui.weight(on ? 600 : 500));
+            label.setPadding(0, Ui.dp(this, 2), 0, 0);
             b.addView(label);
-            b.setOnClickListener(v -> openTab(t[0]));
-            bar.addView(b, Ui.grow());
+            if (!on) {
+                b.setOnClickListener(v -> {
+                    Ui.buzz(v, android.view.HapticFeedbackConstants.CLOCK_TICK);
+                    openTab(t[0]);
+                });
+                Ui.press(b);
+            }
+            row.addView(b, new LinearLayout.LayoutParams(0, Ui.dp(this, 52), 1f));
         }
-        frame.addView(bar, Ui.wide());
-        Ui.fitInsets(frame);
+        bar.addView(row, new FrameLayout.LayoutParams(-1, -2));
+        final int to = sel, from = lastTab < 0 ? sel : lastTab;
+        lastTab = sel;
+        bar.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+            @Override
+            public void onLayoutChange(View v, int l, int t, int r, int bo, int ol, int ot, int or, int ob) {
+                int w = row.getWidth() / tabs.length;
+                if (w <= 0) return;
+                v.removeOnLayoutChangeListener(this);
+                FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) pill.getLayoutParams();
+                lp.width = w;
+                pill.setLayoutParams(lp);
+                pill.setTranslationX(from * w);
+                if (from != to) pill.animate().translationX(to * w).setDuration(320).setInterpolator(Ui.EASE).start();
+                else pill.setTranslationX(to * w);
+            }
+        });
+        dock.addView(bar, Ui.grow());
+        frame.addView(dock, Ui.wide());
+        Ui.fitInsets(frame, dock);
         setContentView(frame);
     }
 
     /** Scrolling page with a fixed button at the bottom (builder Save). */
     private void showWithFooter(LinearLayout root, View footer) {
         ScrollView sv = new ScrollView(this);
-        sv.setBackgroundColor(Color.parseColor(Ui.BG));
+        sv.setBackgroundColor(Color.TRANSPARENT);
         sv.addView(root);
         LinearLayout frame = Ui.column(this);
-        frame.setBackgroundColor(Color.parseColor(Ui.BG));
+        frame.setBackgroundColor(Color.TRANSPARENT);
         frame.addView(sv, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
         LinearLayout foot = Ui.column(this);
-        foot.setBackgroundColor(Color.parseColor(Ui.SURF1));
+        foot.setBackgroundColor(Color.parseColor(Ui.NAV));
         int p = Ui.dp(this, 16);
         foot.setPadding(p, Ui.dp(this, 12), p, Ui.dp(this, 12));
         foot.addView(footer, Ui.wide());
@@ -1404,8 +1782,8 @@ public class MainActivity extends Activity {
     }
 
     TextView section(String s) {
-        TextView t = Ui.overline(this, s, Ui.MUTED);
-        t.setPadding(0, Ui.dp(this, 28), 0, Ui.dp(this, 10));
+        TextView t = Ui.left(this, s.toUpperCase(java.util.Locale.ROOT), 13, Ui.MUTED);
+        t.setPadding(Ui.dp(this, 16), Ui.dp(this, 24), 0, Ui.dp(this, 7));
         return t;
     }
 
@@ -1473,17 +1851,18 @@ public class MainActivity extends Activity {
     }
 
     View toggle(String label, boolean on, BoolSink sink) {
-        Switch s = new Switch(this);
-        s.setText(L.t(this, label));
-        s.setTextSize(16);
-        s.setTextColor(Color.WHITE);
-        s.setChecked(on);
-        s.setPadding(0, Ui.dp(this, 8), 0, Ui.dp(this, 8));
-        s.setOnCheckedChangeListener((b, c) -> {
+        LinearLayout row = Ui.row(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(0, Ui.dp(this, 9), 0, Ui.dp(this, 9));
+        row.addView(Ui.left(this, label, 16, Ui.WHITE), Ui.grow());
+        Ui.Switch sw = new Ui.Switch(this, on, c -> {
             sink.set(c);
             if (editChanged != null) editChanged.run();
         });
-        return s;
+        sw.setContentDescription(L.t(this, label));
+        row.addView(sw);
+        row.setOnClickListener(v -> sw.toggle());
+        return row;
     }
 
     static List<String> list(String... s) {

@@ -19,60 +19,71 @@ let current = {};
 
 const get = (c, k) => k.startsWith("extend.") ? c.extend[k.slice(7)] : c[k];
 
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+function row(label, input, cls) {
+  const r = el("div", "row" + (cls ? " " + cls : ""));
+  r.append(el("span", null, label), input);
+  return r;
+}
+
 function render(config, pending) {
   current = config;
   const box = $("cats");
   box.textContent = "";
   for (const cat of Object.keys(LABELS)) {
     const c = config[cat];
-    const card = document.createElement("div");
-    card.className = "card";
+    box.append(el("h2", null, LABELS[cat]));
+    const card = el("div", "group card");
     card.dataset.cat = cat;
-    const h = document.createElement("h3");
-    h.textContent = LABELS[cat];
-    const on = document.createElement("input");
-    on.type = "checkbox";
-    on.checked = c.enabled;
+    const on = Object.assign(el("input", "switch"), { type: "checkbox", checked: c.enabled });
     on.dataset.k = "enabled";
-    h.appendChild(on);
-    card.appendChild(h);
+    card.append(row("On", on, "head"));
     for (const [k, label, min, max] of FIELDS) {
-      const row = document.createElement("label");
-      row.textContent = label;
-      const inp = document.createElement("input");
-      Object.assign(inp, { type: "number", min, max, value: get(c, k) });
+      const inp = Object.assign(el("input"), { type: "number", min, max, value: get(c, k) });
       inp.dataset.k = k;
-      row.appendChild(inp);
-      card.appendChild(row);
+      card.append(row(label, inp));
     }
-    const t = document.createElement("label");
-    t.textContent = "Time-left tab";
-    const ti = document.createElement("input");
-    Object.assign(ti, { type: "checkbox", checked: c.timer });
+    const ti = Object.assign(el("input", "switch"), { type: "checkbox", checked: c.timer });
     ti.dataset.k = "timer";
-    t.appendChild(ti);
-    card.appendChild(t);
-    const s = document.createElement("label");
-    s.textContent = "Blocked times (e.g. 22:00-07:00, comma separated)";
-    const si = document.createElement("input");
-    Object.assign(si, { type: "text", value: c.schedule.join(", ") });
+    card.append(row("Time-left tab", ti));
+    const si = Object.assign(el("input"), { type: "text", value: c.schedule.join(", "), placeholder: "22:00-07:00" });
     si.dataset.k = "schedule";
-    s.style.flexWrap = "wrap";
-    s.appendChild(si);
-    card.appendChild(s);
-    if (pending[cat]) {
-      const p = document.createElement("div");
-      p.className = "pending";
-      p.textContent = `Looser change waiting until ${new Date(pending[cat].at).toLocaleString()}`;
-      card.appendChild(p);
-    }
-    box.appendChild(card);
+    card.append(row("Blocked times (comma separated)", si, "wrap"));
+    box.append(card);
+    if (pending[cat]) box.append(el("div", "note pending",
+      `Looser change waiting until ${new Date(pending[cat].at).toLocaleString()}`));
   }
+}
+
+// Pause screen look, same choices as the Android app (storage "ui": guide, pace, guide_q).
+async function renderUi() {
+  const ui = Object.assign({ guide: 0, pace: 0, guide_q: true }, (await chrome.storage.local.get("ui")).ui);
+  const save = () => chrome.storage.local.set({ ui });
+  const seg = (id, names, key) => {
+    const box = $(id);
+    box.textContent = "";
+    names.forEach((n, i) => {
+      const b = el("button", i === ui[key] ? "on" : "", n);
+      b.onclick = () => { ui[key] = i; save(); renderUi(); };
+      box.append(b);
+    });
+  };
+  seg("guide", Guide.STYLES, "guide");
+  seg("pace", Guide.PACES, "pace");
+  $("paceInfo").textContent = Guide.PACE_INFO[ui.pace];
+  $("guide_q").checked = ui.guide_q;
+  $("guide_q").onchange = () => { ui.guide_q = $("guide_q").checked; save(); };
 }
 
 function read() {
   const out = {};
-  for (const card of document.querySelectorAll(".card")) {
+  for (const card of document.querySelectorAll("#cats .card")) {
     const c = JSON.parse(JSON.stringify(current[card.dataset.cat]));
     for (const inp of card.querySelectorAll("input")) {
       const k = inp.dataset.k;
@@ -139,3 +150,4 @@ $("file").onchange = async () => {
 };
 
 load();
+renderUi();
